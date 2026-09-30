@@ -1,0 +1,799 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Percolation on networks</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --paper:#EEF2F6; --panel:#FFFFFF; --ink:#15243A; --muted:#566779; --rule:#CBD5E0; --grid:#E3E9F0;
+  --accent:#1F4FD1; --crit:#B4235A;
+  --l16:#E69F00; --l32:#56B4E9; --l64:#009E73; --l128:#CC79A7; --l256:#0B5FA5;
+  --serif:"Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:"Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1924; --panel:#142232; --ink:#E2E9F1; --muted:#93A4B8; --rule:#2B3D52; --grid:#1B2B3D;
+    --accent:#7A9DFF; --crit:#FF6F9C;
+    --l16:#F0B43C; --l32:#6CC3F2; --l64:#2FC596; --l128:#E08FC1; --l256:#8FB8FF;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1924; --panel:#142232; --ink:#E2E9F1; --muted:#93A4B8; --rule:#2B3D52; --grid:#1B2B3D;
+  --accent:#7A9DFF; --crit:#FF6F9C;
+  --l16:#F0B43C; --l32:#6CC3F2; --l64:#2FC596; --l128:#E08FC1; --l256:#8FB8FF;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5;
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  font-variant-numeric:tabular-nums;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:28px 20px 60px}
+h1,h2,h3{font-family:var(--serif); font-weight:600; line-height:1.15; margin:0}
+h1{font-size:clamp(30px,4.6vw,48px); letter-spacing:-0.01em}
+h2{font-size:clamp(22px,2.8vw,30px); margin-bottom:8px}
+p{margin:0 0 10px}
+.lede{font-family:var(--serif); font-size:18px; line-height:1.55; max-width:68ch; margin-top:12px; color:var(--ink)}
+.prose{max-width:72ch; font-family:var(--serif); font-size:16.5px; line-height:1.6}
+section{margin-top:44px}
+sub{font-size:.72em}
+.hero{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(290px,1fr); gap:28px; margin-top:26px; align-items:start}
+@media (max-width:860px){.hero{grid-template-columns:1fr}}
+.plate{background:var(--panel); border:2px solid var(--ink); padding:10px; border-radius:3px}
+#lat{width:100%; aspect-ratio:1/1; display:block; image-rendering:pixelated}
+.plate-note{font-size:13px; color:var(--muted); margin-top:8px}
+.controls{display:flex; flex-direction:column; gap:14px}
+.pbig{font-family:var(--serif); font-size:clamp(40px,6vw,64px); line-height:1; font-weight:600; letter-spacing:-0.02em}
+.pbig span{font-style:italic; font-weight:400}
+.slider-wrap{position:relative; padding-bottom:18px}
+input[type=range]{width:100%; accent-color:var(--accent); margin:0}
+.pcmark{position:absolute; top:22px; transform:translateX(-50%); font-size:12px; color:var(--crit); white-space:nowrap}
+.pcmark::before{content:""; position:absolute; left:50%; top:-6px; width:1px; height:6px; background:var(--crit)}
+.row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+button,select{font:inherit; font-size:14px; color:var(--ink); background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:6px 11px; cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.primary{background:var(--ink); color:var(--panel); border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+fieldset{border:0; padding:0; margin:0}
+legend{font-size:13px; color:var(--muted); margin-bottom:4px}
+.seg{display:inline-flex; border:1px solid var(--rule); border-radius:5px; overflow:hidden; background:var(--panel)}
+.seg label{padding:6px 11px; font-size:14px; cursor:pointer}
+.seg input{position:absolute; opacity:0; pointer-events:none}
+.seg input:checked + span{font-weight:600; color:var(--accent)}
+.seg input:focus-visible + span{outline:2px solid var(--accent); outline-offset:2px}
+.field label.lab{font-size:13px; color:var(--muted); display:block; margin-bottom:4px}
+dl.readouts{display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:0; padding:12px 14px; background:var(--panel); border:1px solid var(--rule); border-radius:5px}
+dl.readouts dt{color:var(--muted); font-size:14px}
+dl.readouts dd{margin:0; font-weight:600; text-align:right}
+.status{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:12px 0 4px; font-size:13.5px}
+.chip{display:inline-flex; align-items:center; gap:6px}
+.sw{width:18px; height:3px; border-radius:2px; display:inline-block}
+.bar{height:4px; background:var(--grid); border-radius:2px; overflow:hidden; flex:1 1 160px; max-width:260px}
+.bar i{display:block; height:100%; width:0; background:var(--accent)}
+.figs{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:14px}
+figure{margin:0; background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:12px 12px 10px}
+figcaption{font-size:13.5px; color:var(--muted); margin-bottom:6px}
+figcaption b{color:var(--ink); font-weight:600; font-size:14.5px; display:block}
+figure canvas{width:100%; height:240px; display:block}
+figure.sq canvas{height:auto; aspect-ratio:1/1}
+figure.wide{grid-column:1 / -1}
+.stages{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px}
+@media (max-width:700px){.stages{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
+.stages canvas{width:100%; height:auto; aspect-ratio:1/1; display:block; border:1px solid var(--rule)}
+.stlab{display:block; font-size:12.5px; color:var(--muted); margin-top:4px}
+.fit{font-size:13.5px; margin:6px 0 0; min-height:1.4em}
+.clickable canvas{cursor:crosshair}
+.tbl{overflow-x:auto; margin-top:14px; background:var(--panel); border:1px solid var(--rule); border-radius:5px}
+table{border-collapse:collapse; width:100%; font-size:14px; min-width:640px}
+th,td{padding:8px 12px; text-align:left; border-bottom:1px solid var(--grid); vertical-align:top}
+th{font-weight:600; color:var(--muted); font-size:13px}
+td.num{text-align:right; white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.good{color:var(--l64)} .warn{color:var(--crit)}
+.two{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr); gap:20px; margin-top:14px; align-items:start}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.two figure canvas{height:340px}
+.sl{display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center; margin-bottom:12px}
+.sl label{font-size:14px}
+.sl output{font-weight:600}
+.sl input{grid-column:1 / -1}
+.note{font-size:13px; color:var(--muted); max-width:80ch}
+.keyref{border-left:4px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 5px 5px 0; margin:12px 0 16px; max-width:80ch}
+ol.refs{max-width:80ch; padding-left:1.4em; font-size:14.5px; line-height:1.55}
+ol.refs li{margin-bottom:8px}
+footer{margin-top:48px; font-size:13px; color:var(--muted); max-width:80ch}
+
+#net{width:100%; aspect-ratio:1/1; display:block}
+.chk{font-size:14px; display:flex; gap:8px; align-items:center}
+.keyref{border-left:4px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 5px 5px 0; margin:12px 0 16px; max-width:80ch}
+ol.refs{max-width:80ch; padding-left:1.4em; font-size:14.5px; line-height:1.55}
+ol.refs li{margin-bottom:8px}
+[hidden]{display:none !important}
+.glab{display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px}
+.glab span:first-child{color:var(--muted)} #gTxt{font-weight:600; color:var(--accent)}
+.gbar{position:relative; height:14px; background:var(--grid); border-radius:7px; overflow:hidden; border:1px solid var(--rule)}
+.gpc{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--crit); transform:translateX(-1px)}
+#gFill{position:absolute; left:0; top:0; bottom:0; width:0; background:var(--accent)}
+.curve-cap{font-size:13.5px; color:var(--muted); margin:0 0 6px} .curve-cap b{color:var(--ink); display:block; font-size:14.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>Percolation on networks</h1>
+  <p class="lede">A network is connected when every node can reach every other along a path of links. With few links it falls apart into separate components; add links and, past a critical point, one giant component suddenly holds a finite share of all nodes. This is the percolation transition. On Erdős–Rényi random graphs the threshold is sharp. On scale-free networks with p(k) ∝ k<sup>−γ</sup> and 2 &lt; γ &lt; 3, the degree has a finite mean but an infinite variance, the hubs make the threshold vanish, and an epidemic can always spread.</p>
+  <p class="note" style="margin-top:6px">Based on lecture slides by Sang Hoon Lee for an introductory network science course. <a href="#references" style="color:var(--accent)">References</a></p>
+</header>
+
+<div class="hero">
+  <div>
+    <div class="plate"><canvas id="net" aria-label="Network with its components"></canvas></div>
+    <p class="plate-note" id="netNote"></p>
+    <div class="plate" style="margin-top:14px; border-width:1px; padding:12px">
+      <p class="curve-cap"><b>Largest component of this network against p</b> Blue: this network, exactly, since every link keeps its own random number. Dashed: theory for an infinitely large network with the same degrees. Click or drag on the chart to set p.</p>
+      <canvas id="netS" style="width:100%; height:220px; display:block; cursor:crosshair; touch-action:none" aria-label="Largest component against p"></canvas>
+    </div>
+  </div>
+  <div class="controls">
+    <fieldset>
+      <legend>Network</legend>
+      <div class="seg">
+        <label><input type="radio" name="nt" value="gnp" checked><span>Erdős–Rényi G(N, p)</span></label>
+        <label><input type="radio" name="nt" value="er"><span>Erdős–Rényi, fixed ⟨k⟩</span></label>
+        <label><input type="radio" name="nt" value="sf"><span>Scale-free</span></label>
+      </div>
+    </fieldset>
+    <div class="row" style="gap:16px">
+      <div class="field" id="fK" hidden><label class="lab" for="vK">Mean degree ⟨k⟩</label><select id="vK"><option>2</option><option>3</option><option selected>4</option><option>6</option></select></div>
+      <div class="field" id="fG" hidden><label class="lab" for="vG">Degree exponent γ</label><select id="vG"><option>2.2</option><option selected>2.5</option><option>2.8</option><option>3.5</option></select></div>
+      <div class="field" id="fM" hidden><label class="lab" for="vM">Minimum degree</label><select id="vM"><option>1</option><option selected>2</option><option>3</option></select></div>
+      <div class="field"><label class="lab" for="vN">Nodes</label><select id="vN"><option>200</option><option selected>300</option><option>500</option></select></div>
+    </div>
+    <div class="pbig"><span>p</span> = <output id="pOut"></output></div>
+    <div class="slider-wrap">
+      <input type="range" id="p" min="0" max="1000" step="1" aria-label="p">
+      <div class="pcmark" id="pcMark">p<sub>c</sub></div>
+    </div>
+    <p class="note" style="margin-top:-8px" id="pNote"></p>
+    <div class="row">
+      <button id="play" class="primary">Scan through p</button>
+      <select id="speed" aria-label="Scan speed"><option value="20000">slowly</option><option value="10000" selected>at normal speed</option><option value="5000">quickly</option></select>
+      <button id="toPc">Jump to p<sub>c</sub></button>
+      <button id="newNet">New network</button>
+    </div>
+    <div class="row">
+      <button id="outbreak">Start an outbreak</button>
+      <select id="seedSel" aria-label="Where the outbreak starts"><option value="rand">from a random node</option><option value="hub">from the biggest hub</option></select>
+    </div>
+    <div><div class="glab"><span>Largest component</span><span id="gTxt"></span></div><div class="gbar" aria-hidden="true"><div id="gFill"></div></div></div>
+    <fieldset>
+      <legend>Coloring</legend>
+      <div class="seg">
+        <label><input type="radio" name="cm" value="big" checked><span>Highlight the largest</span></label>
+        <label><input type="radio" name="cm" value="all"><span>Every component</span></label>
+      </div>
+    </fieldset>
+    <label class="chk" id="logWrap"><input type="checkbox" id="logP" checked> Logarithmic p scale (the threshold 1/(N − 1) sits near p = 0)</label>
+    <label class="chk" id="remWrap"><input type="checkbox" id="showRem"> Show removed links faintly</label>
+    <dl class="readouts">
+      <dt id="lKept">Links kept</dt><dd id="rKept">–</dd>
+      <dt>Mean degree of the kept network</dt><dd id="rKm">–</dd>
+      <dt>Density d = 2M / N(N − 1)</dt><dd id="rDen">–</dd>
+      <dt>S, share of nodes in the largest component</dt><dd id="rS">–</dd>
+      <dt>Second-largest component</dt><dd id="rS2">–</dd>
+      <dt>Number of components</dt><dd id="rNc">–</dd>
+      <dt>⟨s⟩, mean size of the other components</dt><dd id="rChi">–</dd>
+      <dt id="lPc">p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩) for this network</dt><dd id="rPc">–</dd>
+      <dt>Outbreak</dt><dd id="rOut">not started</dd>
+    </dl>
+  </div>
+</div>
+
+<section>
+  <h2>Density and the giant component</h2>
+  <p class="prose">In an Erdős–Rényi graph every pair of the N nodes is linked with the same probability, so the density d = 2M / N(N − 1) and the mean degree ⟨k⟩ = d(N − 1) carry the same information. The giant component appears at ⟨k⟩ = 1, which means a critical density d<sub>c</sub> = 1/(N − 1) that shrinks as the network grows; that is why the curves below use ⟨k⟩. Links are added one at a time in random order, so a single run traces the whole curve, and runs are averaged for five network sizes. Above the threshold the giant share solves S = 1 − e<sup>−⟨k⟩S</sup>, and the mean size of the other components is ⟨s⟩ = 1 / (1 − ⟨k⟩ + ⟨k⟩S).</p>
+  <div class="status">
+    <span id="chipsE" class="row" style="gap:14px"></span>
+    <span class="bar" aria-hidden="true"><i id="progE"></i></span>
+    <span id="stTxt"></span>
+    <button id="run">Pause</button>
+    <button id="more">Add more samples</button>
+    <button id="restart">Start over</button>
+  </div>
+  <div class="figs">
+    <figure><figcaption><b>Giant component S against ⟨k⟩</b>Colored: simulations. Dashed: S = 1 − e<sup>−⟨k⟩S</sup>. The step sharpens as N grows.</figcaption><canvas id="e1"></canvas></figure>
+    <figure><figcaption><b>Mean size of the other components ⟨s⟩</b>It diverges at ⟨k⟩ = 1 as N → ∞, like a susceptibility. Dashed: 1 / (1 − ⟨k⟩ + ⟨k⟩S).</figcaption><canvas id="e2"></canvas></figure>
+    <figure><figcaption><b>S ∝ (⟨k⟩ − 1)<sup>β</sup> above the threshold</b>Log–log. Dashed: the theory S = 1 − e<sup>−⟨k⟩S</sup>. Dotted: slope β = 1.</figcaption><canvas id="e3"></canvas><p class="fit" id="t3"></p></figure>
+    <figure><figcaption><b>⟨s⟩ ∝ (1 − ⟨k⟩)<sup>−γ<sub>p</sub></sup> below the threshold</b>Log–log. Dashed: the theory ⟨s⟩ = 1/(1 − ⟨k⟩), slope −γ<sub>p</sub> = −1. (γ<sub>p</sub> is the percolation exponent, not the degree exponent.)</figcaption><canvas id="e4"></canvas><p class="fit" id="t4"></p></figure>
+    <figure><figcaption><b>Largest component at ⟨k⟩ = 1: S<sub>max</sub> ∝ N<sup>2/3</sup></b>At the threshold the largest component is large but not giant.</figcaption><canvas id="e5"></canvas><p class="fit" id="t5"></p></figure>
+    <figure><figcaption><b>Component sizes at ⟨k⟩ = 1: n<sub>s</sub> ∝ s<sup>−τ</sup></b>Components of size s per node, log-binned, for N = 100 000. Dashed: τ = 5/2.</figcaption><canvas id="e6"></canvas><p class="fit" id="t6"></p></figure>
+  </div>
+  <div class="tbl"><table id="erTable" aria-label="Critical exponents of the Erdős–Rényi transition"></table></div>
+  <p class="note" style="margin-top:10px">These are the mean-field exponents of percolation, the same as on the Bethe lattice and on lattices above the upper critical dimension d = 6. There the incipient cluster has fractal dimension D = 4, so its mass grows as L<sup>4</sup> = N<sup>4/6</sup> = N<sup>2/3</sup>.</p>
+</section>
+
+<section>
+  <h2>Random versus scale-free networks</h2>
+  <p class="prose">Now take a whole network and keep each link with probability p. Scale-free networks are built with the configuration model: every node draws a degree from p(k) ∝ k<sup>−γ</sup>, and link ends are paired at random (self-loops and repeated links are dropped). Each Erdős–Rényi network is given the same mean degree as the scale-free network of the same size. For any network with random wiring, the giant component appears at p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩), the Molloy–Reed criterion. For Erdős–Rényi graphs ⟨k²⟩ − ⟨k⟩ = ⟨k⟩², so p<sub>c</sub> = 1/⟨k⟩ whatever the size. For 2 &lt; γ &lt; 3 the mean stays finite but ⟨k²⟩ grows with the largest hub, so p<sub>c</sub> → 0 as N → ∞.</p>
+  <div class="row" style="gap:16px; margin-top:10px; align-items:flex-end">
+    <div class="field"><label class="lab" for="sG">Degree exponent γ</label><select id="sG"><option>2.2</option><option selected>2.5</option><option>2.8</option><option>3.5</option></select></div>
+    <div class="field"><label class="lab" for="sM">Minimum degree</label><select id="sM"><option>1</option><option selected>2</option><option>3</option></select></div>
+    <button id="sRun">Run with these settings</button>
+  </div>
+  <div class="status">
+    <span id="chipsB" class="row" style="gap:14px"></span>
+    <span class="bar" aria-hidden="true"><i id="progB"></i></span>
+  </div>
+  <div class="figs">
+    <figure><figcaption><b>Degree distribution p(k)</b>Log-binned, N = 100 000. Red: scale-free, with the dashed slope −γ. Dark: Erdős–Rényi, which is Poisson and has no hubs.</figcaption><canvas id="b1"></canvas></figure>
+    <figure><figcaption><b>Erdős–Rényi: giant component against p</b>Nothing spreads until p<sub>c</sub> = 1/⟨k⟩ (dashed verticals), then the giant grows suddenly. Dashed curve: generating-function theory for N = 100 000.</figcaption><canvas id="b2"></canvas></figure>
+    <figure><figcaption><b>Scale-free: giant component against p</b>The threshold drifts toward zero as N grows and the curve rises from almost p = 0: there is no critical point in the infinite network.</figcaption><canvas id="b3"></canvas></figure>
+    <figure><figcaption><b>Mean size of the other components ⟨s⟩ against p</b>Solid: scale-free. Dashed: Erdős–Rényi. The peaks mark the finite-size thresholds.</figcaption><canvas id="b4"></canvas></figure>
+    <figure><figcaption><b>Threshold against network size</b>Lines: p<sub>c</sub> = ⟨k⟩/(⟨k²⟩ − ⟨k⟩) from the simulated degrees. Dots: the peak of ⟨s⟩. The scale-free threshold keeps falling.</figcaption><canvas id="b5"></canvas></figure>
+  </div>
+  <div class="tbl"><table id="momTable" aria-label="Degree moments and thresholds"></table></div>
+</section>
+
+<section>
+  <h2>Epidemics and the vanishing threshold</h2>
+  <p class="prose">An outbreak in which each infected person passes the disease to each contact with probability T, then recovers, is bond percolation with p = T: the final outbreak is the component of the first case in the network of links that transmitted. Try “Start an outbreak” at the top of the page and compare the result with that node’s component. On a random network nothing spreads below T<sub>c</sub> = 1/⟨k⟩, and past it an epidemic suddenly becomes possible. On a scale-free network the hubs, like super-spreading events, keep T<sub>c</sub> near zero, so even rarely transmitted diseases can reach a finite fraction of the population. The size of the epidemic then grows very slowly from zero, which is the convex red curve of the lecture.</p>
+  <div class="tbl"><table id="sfTable" aria-label="Thresholds and giant-component exponents"></table></div>
+  <p class="note" style="margin-top:10px">Near the threshold the giant grows as S ∝ (p − p<sub>c</sub>)<sup>β</sup>. The values for scale-free networks come from the generating-function analysis of Cohen, ben-Avraham and Havlin.</p>
+</section>
+
+<section id="references">
+  <h2>References</h2>
+  <ol class="refs">
+    <li>P. Erdős and A. Rényi, “On the evolution of random graphs,” <i>Publ. Math. Inst. Hung. Acad. Sci.</i> <b>5</b>, 17 (1960).</li>
+    <li>A.-L. Barabási and R. Albert, “Emergence of scaling in random networks,” <i>Science</i> <b>286</b>, 509 (1999).</li>
+    <li>M. Molloy and B. Reed, “A critical point for random graphs with a given degree sequence,” <i>Random Struct. Algorithms</i> <b>6</b>, 161 (1995).</li>
+    <li>M. E. J. Newman, S. H. Strogatz and D. J. Watts, “Random graphs with arbitrary degree distributions and their applications,” <i>Phys. Rev. E</i> <b>64</b>, 026118 (2001). Generating functions used for the theory curves.</li>
+    <li>D. S. Callaway, M. E. J. Newman, S. H. Strogatz and D. J. Watts, “Network robustness and fragility: Percolation on random graphs,” <i>Phys. Rev. Lett.</i> <b>85</b>, 5468 (2000).</li>
+    <li>R. Cohen, K. Erez, D. ben-Avraham and S. Havlin, “Resilience of the Internet to random breakdowns,” <i>Phys. Rev. Lett.</i> <b>85</b>, 4626 (2000).</li>
+    <li>R. Cohen, D. ben-Avraham and S. Havlin, “Percolation critical exponents in scale-free networks,” <i>Phys. Rev. E</i> <b>66</b>, 036113 (2002).</li>
+    <li>M. E. J. Newman, “Spread of epidemic disease on networks,” <i>Phys. Rev. E</i> <b>66</b>, 016128 (2002). Outbreaks as bond percolation.</li>
+    <li>R. Pastor-Satorras and A. Vespignani, “Epidemic spreading in scale-free networks,” <i>Phys. Rev. Lett.</i> <b>86</b>, 3200 (2001).</li>
+    <li>M. E. J. Newman and R. M. Ziff, “Efficient Monte Carlo algorithm and high-precision results for percolation,” <i>Phys. Rev. Lett.</i> <b>85</b>, 4104 (2000). Adding links one at a time to trace a whole curve per run.</li>
+    <li>A.-L. Barabási, <i>Network Science</i>, Cambridge University Press (2016).</li>
+    <li>M. E. J. Newman, <i>Networks</i>, 2nd ed., Oxford University Press (2018).</li>
+  </ol>
+</section>
+
+<footer>
+  Components are found with union–find. Sizes N = 1 000 to 100 000; averages improve with more samples, and the smallest networks show the strongest finite-size effects.
+  <p style="margin-top:14px">Lecture slides by Sang Hoon Lee. Created by Claude Opus 5.5.</p>
+</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const C = {};
+function readColors(){
+  const cs=getComputedStyle(document.documentElement);
+  ['paper','panel','ink','muted','rule','grid','accent','crit','l16','l32','l64','l128','l256'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());
+}
+function hexRgb(h){ h=h.replace('#',''); if (h.length===3) h=h.split('').map(c=>c+c).join(''); const v=parseInt(h,16); return [(v>>16)&255,(v>>8)&255,v&255]; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const f3=(v,d=3)=>isFinite(v)?v.toFixed(d):'–';
+const fmtN=v=>v>=1000?(v/1000)+'k':String(v);
+const NCOL=N=>({1000:C.l16,3000:C.l32,10000:C.l64,30000:C.l128,100000:C.l256})[N];
+function linReg(xs,ys){
+  const n=xs.length; if (n<2) return null;
+  let mx=0,my=0; for (let i=0;i<n;i++){mx+=xs[i];my+=ys[i];} mx/=n; my/=n;
+  let sxx=0,sxy=0; for (let i=0;i<n;i++){ sxx+=(xs[i]-mx)**2; sxy+=(xs[i]-mx)*(ys[i]-my); }
+  const slope=sxy/sxx, icpt=my-slope*mx;
+  let se=NaN; if (n>2){ let r=0; for (let i=0;i<n;i++) r+=(ys[i]-icpt-slope*xs[i])**2; se=Math.sqrt(r/(n-2)/sxx); }
+  return {slope,icpt,se};
+}
+
+/* ---------- plotting ---------- */
+const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+const supNum = n => String(n).split('').map(c=>SUP[c]||c).join('');
+function niceStep(range,n){ const raw=range/n, p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p; return (f<1.5?1:f<3?2:f<7?5:10)*p; }
+function fmtTick(v,step){ const dec=Math.max(0,-Math.floor(Math.log10(step)+1e-9)); return (Math.abs(v)<step/2?0:v).toFixed(Math.min(dec,4)); }
+function plot(cv,o){
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; if (!W||!H) return;
+  const pw_=Math.round(W*dpr), ph_=Math.round(H*dpr); if (cv.width!==pw_||cv.height!==ph_){cv.width=pw_; cv.height=ph_;}
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const m={l:54,r:12,t:10,b:36}, pw=W-m.l-m.r, ph=H-m.t-m.b;
+  const fx=o.logx?Math.log10:v=>v, fy=o.logy?Math.log10:v=>v;
+  const series=o.series||[];
+  let [x0,x1]=o.x||[Infinity,-Infinity];
+  if (!o.x){ series.forEach(s=>s.pts.forEach(p=>{ if (isFinite(p[0])&&(!o.logx||p[0]>0)){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);} })); }
+  let y0=Infinity,y1=-Infinity;
+  if (o.y){ [y0,y1]=o.y; }
+  else {
+    series.forEach(s=>{ if (s.noScale) return; s.pts.forEach(p=>{ const y=p[1]; if (p[0]>=x0&&p[0]<=x1&&isFinite(y)&&(!o.logy||y>0)){y0=Math.min(y0,y);y1=Math.max(y1,y);} }); });
+    if (!isFinite(y0)){ y0=o.logy?0.1:0; y1=o.logy?10:1; }
+    if (o.logy){ y0/=1.3; y1*=1.3; } else { const pad=(y1-y0||1)*0.06; y0 = o.zeroY ? Math.min(0,y0) : y0-pad; y1+=pad; }
+  }
+  if (!isFinite(x0)||!isFinite(x1)){ x0=o.logx?1:0; x1=o.logx?10:1; }
+  if (x0===x1){x0-=1;x1+=1;}
+  const X0=fx(x0),X1=fx(x1),Y0=fy(y0),Y1=fy(y1);
+  const X=v=>m.l+(fx(v)-X0)/(X1-X0)*pw, Y=v=>m.t+ph-(fy(v)-Y0)/(Y1-Y0)*ph;
+  cv._inv = px => { const t=(px-m.l)/pw; const v=X0+t*(X1-X0); return o.logx?Math.pow(10,v):v; };
+  ctx.font='11px "Public Sans", system-ui, sans-serif'; ctx.lineWidth=1;
+  function ticks(lo,hi,log,custom){
+    if (custom) return custom.filter(v=>v>=lo*0.999&&v<=hi*1.001).map(v=>[v,(o.xfmt||String)(v)]);
+    if (log){
+      if (!(lo>0)||!isFinite(hi)) return [];
+      const a=Math.floor(Math.log10(lo)), b=Math.ceil(Math.log10(hi)), out=[];
+      if (b-a>40) return [];
+      const mults = (b-a)<=1 ? [1,1.5,2,3,5,7] : (b-a)<=2 ? [1,2,5] : [1];
+      const stepK = (b-a)>6 ? 2 : 1;
+      for (let k=a;k<=b;k+=1) if (((k%stepK)+stepK)%stepK===0) mults.forEach(mu=>{ const v=mu*Math.pow(10,k); if (v>=lo&&v<=hi) out.push([v, mu===1 ? (k>=0&&k<=3 ? String(Math.pow(10,k)) : '10'+supNum(k)) : (k>=0? String(v): String(+v.toPrecision(2)))]); });
+      return out;
+    }
+    const st=niceStep(hi-lo,5), out=[];
+    if (!(st>0)||!isFinite(lo)||!isFinite(hi)) return out;
+    for (let v=Math.ceil(lo/st)*st; v<=hi+st*1e-6; v+=st) out.push([v,fmtTick(v,st)]);
+    return out;
+  }
+  ctx.fillStyle=C.panel; ctx.fillRect(m.l,m.t,pw,ph);
+  ctx.strokeStyle=C.grid; ctx.fillStyle=C.muted;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ticks(x0,x1,o.logx,o.xticks).forEach(([v,l])=>{ const px=Math.round(X(v))+.5; ctx.beginPath(); ctx.moveTo(px,m.t); ctx.lineTo(px,m.t+ph); ctx.stroke(); ctx.fillText(l,px,m.t+ph+5); });
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  ticks(y0,y1,o.logy).forEach(([v,l])=>{ const py=Math.round(Y(v))+.5; ctx.beginPath(); ctx.moveTo(m.l,py); ctx.lineTo(m.l+pw,py); ctx.stroke(); ctx.fillText(l,m.l-6,py); });
+  ctx.strokeStyle=C.rule; ctx.strokeRect(m.l+.5,m.t+.5,pw-1,ph-1);
+  ctx.save(); ctx.beginPath(); ctx.rect(m.l,m.t,pw,ph); ctx.clip();
+  (o.vlines||[]).forEach(v=>{ if (v.x<x0||v.x>x1) return; ctx.strokeStyle=v.color; ctx.lineWidth=v.width||1; ctx.setLineDash(v.dash||[]); const px=X(v.x); ctx.beginPath(); ctx.moveTo(px,m.t); ctx.lineTo(px,m.t+ph); ctx.stroke(); ctx.setLineDash([]); if (v.label){ ctx.fillStyle=v.color; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(v.label,px+4,m.t+4); } });
+  series.forEach(s=>{
+    ctx.strokeStyle=s.color; ctx.fillStyle=s.color; ctx.lineWidth=s.width||1.6; ctx.setLineDash(s.dash||[]); ctx.globalAlpha=s.alpha||1;
+    if (s.dots){ s.pts.forEach(p=>{ if (!isFinite(p[1])||(o.logy&&p[1]<=0)) return; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),s.r||4,0,7); ctx.fill(); }); }
+    else { ctx.beginPath(); let pen=false; s.pts.forEach(p=>{ const ok=isFinite(p[1])&&isFinite(p[0])&&(!o.logy||p[1]>0)&&(!o.logx||p[0]>0); if (!ok){pen=false;return;} const px=X(p[0]),py=Y(p[1]); if (pen) ctx.lineTo(px,py); else {ctx.moveTo(px,py); pen=true;} }); ctx.stroke(); }
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  });
+  ctx.restore();
+  ctx.fillStyle=C.muted; ctx.textAlign='center'; ctx.textBaseline='bottom';
+  if (o.xlabel) ctx.fillText(o.xlabel, m.l+pw/2, H-1);
+  if (o.ylabel){ ctx.save(); ctx.translate(11,m.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textBaseline='middle'; ctx.fillText(o.ylabel,0,0); ctx.restore(); }
+}
+
+
+
+/* ---------- graph generators (generators so long runs can pause) ---------- */
+function* genER(N, M, rnd){
+  M=Math.min(M, N*(N-1)/2);
+  const seen=new Set(), eu=new Int32Array(M), ev=new Int32Array(M); let m=0, t=0;
+  while (m<M){
+    const a=(rnd()*N)|0, b=(rnd()*N)|0; if (a===b) continue;
+    const key=a<b?a*N+b:b*N+a; if (seen.has(key)) continue;
+    seen.add(key); eu[m]=a; ev[m]=b; m++;
+    if ((++t & 32767)===0) yield;
+  }
+  return {N,M,eu,ev};
+}
+function* genSF(N, gamma, kmin, rnd){
+  const deg=new Int32Array(N); let sum=0;
+  for (let i=0;i<N;i++){ let k=Math.floor((kmin-0.5)*Math.pow(1-rnd(),-1/(gamma-1))+0.5); if (k<kmin) k=kmin; if (k>N-1) k=N-1; deg[i]=k; sum+=k; }
+  if (sum%2){ deg[0]++; sum++; }
+  const stubs=new Int32Array(sum); let t=0;
+  for (let i=0;i<N;i++) for (let j=0;j<deg[i];j++) stubs[t++]=i;
+  for (let i=sum-1;i>0;i--){ const j=(rnd()*(i+1))|0; const x=stubs[i]; stubs[i]=stubs[j]; stubs[j]=x; if ((i & 65535)===0) yield; }
+  const seen=new Set(), eu=new Int32Array(sum>>1), ev=new Int32Array(sum>>1); let m=0;
+  for (let s=0;s+1<sum;s+=2){
+    const a=stubs[s], b=stubs[s+1]; if (a===b) continue;
+    const key=a<b?a*N+b:b*N+a; if (seen.has(key)) continue;
+    seen.add(key); eu[m]=a; ev[m]=b; m++;
+    if ((s & 65535)===0) yield;
+  }
+  return {N,M:m,eu:eu.subarray(0,m),ev:ev.subarray(0,m)};
+}
+function runSync(it){ let r; while (!(r=it.next()).done); return r.value; }
+function degreesOf(g){ const d=new Int32Array(g.N); for (let e=0;e<g.M;e++){ d[g.eu[e]]++; d[g.ev[e]]++; } return d; }
+
+/* ---------- ER sweep: giant component against mean degree ---------- */
+const ERN=[1000,3000,10000,30000,100000], ERRUNS=[400,150,60,20,8];
+const KMAXE=4, KG=401, KSTEP=0.01, I1=100;
+let tMul=1;
+const erS=ERN.map((N,i)=>({kind:'er',N,base:ERRUNS[i],cnt:0,S:new Float64Array(KG),chi:new Float64Array(KG),smax1:0,logSmax1:0,hist:new Float64Array(48)}));
+const target=st=>st.base*tMul;
+function* erRun(st){
+  const N=st.N, parent=new Int32Array(N), size=new Int32Array(N);
+  for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const g=parent[parent[i]]; parent[i]=g; i=g; } return i; };
+  const seen=new Set(); let m=0, smax=1, S2=N, t=0;
+  for (let i=0;i<KG;i++){
+    const tg=Math.round(i*KSTEP*N/2);
+    while (m<tg){
+      const a=(Math.random()*N)|0, b=(Math.random()*N)|0; if (a===b) continue;
+      const key=a<b?a*N+b:b*N+a; if (seen.has(key)) continue; seen.add(key); m++;
+      let ra=find(a), rb=find(b);
+      if (ra!==rb){ if (size[ra]<size[rb]){ const x=ra; ra=rb; rb=x; } S2+=2*size[ra]*size[rb]; parent[rb]=ra; size[ra]+=size[rb]; if (size[ra]>smax) smax=size[ra]; }
+      if ((++t & 16383)===0) yield;
+    }
+    st.S[i]+=smax/N; st.chi[i]+= N>smax ? (S2-smax*smax)/(N-smax) : 0;
+    if (i===I1){
+      st.smax1+=smax; st.logSmax1+=Math.log(smax);
+      if (N===100000){ const lb=Math.log(1.5); let skip=true; for (let v=0;v<N;v++) if (parent[v]===v){ const s=size[v]; if (s===smax && skip){ skip=false; continue; } st.hist[Math.floor(Math.log(s)/lb+1e-9)]+=1; } }
+    }
+  }
+  st.cnt++;
+}
+
+/* ---------- bond percolation on ER and scale-free networks ---------- */
+const BN=[1000,10000,100000], BRUNS=[80,20,5], PG=201;
+let SFG=2.5, SFM=2, bGen=0;
+let bS=[];
+function makeBond(){
+  bGen++; bS=[];
+  BN.forEach((N,i)=>['sf','er'].forEach(type=>bS.push({kind:'bond',type,N,base:BRUNS[i],cnt:0,gen:bGen,S:new Float64Array(PG),chi:new Float64Array(PG),k1:0,k2:0,kmax:0,kmean0:NaN,hist:new Float64Array(N),theory:null,thCnt:-1})));
+}
+function* bondRun(st){
+  const N=st.N, rnd=Math.random;
+  let g;
+  if (st.type==='sf'){ g=yield* genSF(N,SFG,SFM,rnd); }
+  else {
+    const twin=bS.find(s=>s.type==='sf'&&s.N===N);
+    const km = twin.cnt ? twin.k1/twin.cnt : (isFinite(twin.kmean0)?twin.kmean0:4);
+    g=yield* genER(N,Math.round(km*N/2),rnd);
+  }
+  const d=degreesOf(g); let s1=0,s2=0,mx=0;
+  for (let i=0;i<N;i++){ const k=d[i]; s1+=k; s2+=k*k; if (k>mx) mx=k; st.hist[k]+=1; }
+  const M=g.M, order=new Int32Array(M); for (let e=0;e<M;e++) order[e]=e;
+  for (let e=M-1;e>0;e--){ const j=(rnd()*(e+1))|0; const x=order[e]; order[e]=order[j]; order[j]=x; }
+  yield;
+  const parent=new Int32Array(N), size=new Int32Array(N); for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const q=parent[parent[i]]; parent[i]=q; i=q; } return i; };
+  let m=0, smax=1, S2=N; const Sl=new Float64Array(PG), Cl=new Float64Array(PG);
+  for (let j=0;j<PG;j++){
+    const tg=Math.round(j/(PG-1)*M);
+    while (m<tg){ const e=order[m++]; let ra=find(g.eu[e]), rb=find(g.ev[e]);
+      if (ra!==rb){ if (size[ra]<size[rb]){ const x=ra; ra=rb; rb=x; } S2+=2*size[ra]*size[rb]; parent[rb]=ra; size[ra]+=size[rb]; if (size[ra]>smax) smax=size[ra]; }
+      if ((m & 32767)===0) yield; }
+    Sl[j]=smax/N; Cl[j]= N>smax ? (S2-smax*smax)/(N-smax) : 0;
+  }
+  if (st.gen!==bGen) return;
+  for (let j=0;j<PG;j++){ st.S[j]+=Sl[j]; st.chi[j]+=Cl[j]; }
+  st.k1+=s1/N; st.k2+=s2/N; st.kmax+=mx; if (!isFinite(st.kmean0)) st.kmean0=s1/N;
+  st.cnt++;
+}
+function gfTheory(hist){
+  const ks=[], pk=[]; let tot=0, mean=0;
+  for (let k=0;k<hist.length;k++) if (hist[k]>0){ ks.push(k); pk.push(hist[k]); tot+=hist[k]; }
+  for (let i=0;i<ks.length;i++){ pk[i]/=tot; mean+=ks[i]*pk[i]; }
+  const G0=x=>{ let s=0; for (let i=0;i<ks.length;i++) s+=pk[i]*Math.pow(x,ks[i]); return s; };
+  const G1=x=>{ let s=0; for (let i=0;i<ks.length;i++) if (ks[i]>0) s+=ks[i]*pk[i]*Math.pow(x,ks[i]-1); return s/mean; };
+  const out=new Float64Array(PG);
+  for (let j=0;j<PG;j++){ const p=j/(PG-1); let u=0; for (let it=0;it<500;it++){ const nu=1-p+p*G1(u); if (Math.abs(nu-u)<1e-9){ u=nu; break; } u=nu; } out[j]=Math.max(0,1-G0(u)); }
+  return out;
+}
+
+/* ---------- scheduler ---------- */
+let running=true, job=null, jobSt=null, timer=null, lastRef=0;
+function pick(){
+  let best=null, br=1;
+  erS.concat(bS).forEach(s=>{ const r=s.cnt/target(s); if (r<br){ br=r; best=s; } });
+  return best;
+}
+function work(){
+  timer=null; if (!running) return;
+  const t0=performance.now(); let did=false;
+  while (performance.now()-t0<12){
+    if (job && jobSt.kind==='bond' && jobSt.gen!==bGen){ job=null; }
+    if (!job){ jobSt=pick(); if (!jobSt) break; job = jobSt.kind==='er' ? erRun(jobSt) : bondRun(jobSt); }
+    if (job.next().done) job=null;
+    did=true;
+  }
+  const now=performance.now();
+  if (did){ if (now-lastRef>700){ refresh(); lastRef=performance.now(); } else status(); timer=setTimeout(work,0); }
+  else { refresh(); running=false; status(); $('run').textContent='Resume'; }
+}
+function start(){ if (!running){ running=true; $('run').textContent='Pause'; } if (!timer) timer=setTimeout(work,0); status(); }
+function status(){
+  $('chipsE').innerHTML=erS.map(s=>`<span class="chip"><i class="sw" style="background:${NCOL(s.N)}"></i>N = ${fmtN(s.N)} <span style="color:var(--muted)">${s.cnt}/${target(s)}</span></span>`).join('');
+  $('chipsB').innerHTML=BN.map(N=>{ const a=bS.find(s=>s.type==='sf'&&s.N===N), b=bS.find(s=>s.type==='er'&&s.N===N); return `<span class="chip"><i class="sw" style="background:${NCOL(N)}"></i>N = ${fmtN(N)} <span style="color:var(--muted)">scale-free ${a.cnt}/${target(a)}, random ${b.cnt}/${target(b)}</span></span>`; }).join('');
+  const prog=list=>{ let d=0,t=0; list.forEach(s=>{ d+=Math.min(s.cnt,target(s))*s.N; t+=target(s)*s.N; }); return 100*d/t; };
+  $('progE').style.width=prog(erS).toFixed(1)+'%'; $('progB').style.width=prog(bS).toFixed(1)+'%';
+  $('stTxt').textContent = pick() ? (running?'Sampling…':'Paused') : 'Done';
+}
+
+/* ---------- results ---------- */
+const KGRID=Array.from({length:KG},(_,i)=>i*KSTEP), PGRID=Array.from({length:PG},(_,j)=>j/(PG-1));
+function erTheory(c){ if (c<=1) return 0; let S=1; for (let i=0;i<500;i++) S=1-Math.exp(-c*S); return S; }
+const R={};
+function refresh(){
+  const useE=erS.filter(s=>s.cnt>0);
+  R.eCurves=useE.map(s=>({N:s.N,S:KGRID.map((k,i)=>[k,s.S[i]/s.cnt]),chi:KGRID.map((k,i)=>[k,s.chi[i]/s.cnt])}));
+  const big=useE.length?useE[useE.length-1]:null;
+  R.big=big;
+  const fitOn=(pts,lo,hi)=>{ const q=pts.filter(p=>p[0]>=lo&&p[0]<=hi&&p[1]>0); return q.length>=3?linReg(q.map(p=>Math.log(p[0])),q.map(p=>Math.log(p[1]))):null; };
+  if (big){
+    R.pB=KGRID.map((k,i)=>[k-1,big.S[i]/big.cnt]).filter(p=>p[0]>0);
+    R.pG=KGRID.map((k,i)=>[1-k,big.chi[i]/big.cnt]).filter(p=>p[0]>0);
+    R.fB=fitOn(R.pB,0.05,0.2); R.fG=fitOn(R.pG,0.05,0.5);
+    R.thB=fitOn(KGRID.map(k=>[k-1,erTheory(k)]),0.05,0.2);
+  }
+  const sm=useE.filter(s=>s.cnt>=2).map(s=>[s.N,Math.exp(s.logSmax1/s.cnt)]);
+  R.pSm=sm; R.fSm=sm.length>=3?linReg(sm.map(p=>Math.log(p[0])),sm.map(p=>Math.log(p[1]))):null;
+  const hs=erS.find(s=>s.N===100000); R.ns=[];
+  if (hs.cnt){ for (let k=0;k<48;k++){ if (!hs.hist[k]) continue; const a=Math.ceil(Math.pow(1.5,k)-1e-9), b=Math.ceil(Math.pow(1.5,k+1)-1e-9), w=b-a; if (w<=0) continue; R.ns.push([Math.sqrt(a*(b-1)),hs.hist[k]/(hs.N*hs.cnt*w)]); } }
+  R.fT = fitOn(R.ns,3,300);
+  bS.forEach(s=>{ if (s.cnt && s.N===100000 && s.thCnt!==s.cnt){ s.theory=gfTheory(s.hist); s.thCnt=s.cnt; } });
+  drawAll();
+}
+function drawE(){
+  const eC=R.eCurves||[];
+  const th=KGRID.map(k=>[k,erTheory(k)]);
+  plot($('e1'),{x:[0,4],y:[-0.02,1.02],series:eC.map(c=>({color:NCOL(c.N),pts:c.S})).concat([{color:C.ink,dash:[6,4],width:1.3,pts:th}]),vlines:[{x:1,color:C.crit,dash:[4,4],label:'⟨k⟩ = 1'}],xlabel:'mean degree ⟨k⟩',ylabel:'S'});
+  const thc=KGRID.map(k=>{ const S=erTheory(k); const v=1/(1-k+k*S); return [k, (Math.abs(k-1)<0.02)?NaN:v]; });
+  plot($('e2'),{x:[0,4],zeroY:true,y:[0,Math.max(30,...eC.map(c=>Math.max(...c.chi.map(p=>p[1]))))*1.05],series:eC.map(c=>({color:NCOL(c.N),pts:c.chi})).concat([{color:C.ink,dash:[6,4],width:1.3,noScale:true,pts:thc}]),vlines:[{x:1,color:C.crit,dash:[4,4]}],xlabel:'mean degree ⟨k⟩',ylabel:'⟨s⟩'});
+  const ref=(slope,x0,y0)=>[0.005,0.01,0.03,0.1,0.3,1,3].map(x=>[x,y0*Math.pow(x/x0,slope)]);
+  const s3=[]; if (R.pB){ s3.push({color:NCOL(R.big.N),pts:R.pB}); s3.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:Array.from({length:120},(_,i)=>{ const x=0.005*Math.pow(600,i/119); return [x,erTheory(1+x)]; })}); s3.push({color:C.muted,dash:[2,4],width:1.2,noScale:true,pts:ref(1,0.01,erTheory(1.01))}); }
+  plot($('e3'),{x:[0.005,3],logx:true,logy:true,series:s3,xlabel:'⟨k⟩ − 1',ylabel:'S'});
+  $('t3').innerHTML=R.fB?`Slope for 0.05 ≤ ⟨k⟩ − 1 ≤ 0.2 at N = ${fmtN(R.big.N)}: <b>${R.fB.slope.toFixed(3)}</b>. The theory curve gives ${R.thB.slope.toFixed(3)} over the same range and approaches β = 1 only as ⟨k⟩ → 1; finite size rounds the data off below about 0.03.`:'';
+  const s4=[]; if (R.pG){ s4.push({color:NCOL(R.big.N),pts:R.pG}); s4.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:[0.005,1].map(x=>[x,1/x])}); }
+  plot($('e4'),{x:[0.005,1],logx:true,logy:true,series:s4,xlabel:'1 − ⟨k⟩',ylabel:'⟨s⟩'});
+  $('t4').innerHTML=R.fG?`Slope for 0.05 ≤ 1 − ⟨k⟩ ≤ 0.5: −γ<sub>p</sub> ≈ <b>${R.fG.slope.toFixed(3)}</b> <span style="color:var(--muted)">exact −1, since ⟨s⟩ = 1/(1 − ⟨k⟩) below the threshold</span>`:'';
+  const s5=[{dots:true,r:5,color:C.accent,pts:R.pSm||[]}]; if (R.fSm) s5.push({color:C.ink,dash:[6,4],width:1.2,pts:[800,130000].map(N=>[N,Math.exp(R.fSm.icpt+R.fSm.slope*Math.log(N))])});
+  plot($('e5'),{x:[800,130000],logx:true,logy:true,xticks:ERN,xfmt:fmtN,series:s5,xlabel:'N',ylabel:'S_max (nodes)'});
+  $('t5').innerHTML=R.fSm?`Slope: <b>${R.fSm.slope.toFixed(3)}</b>${isFinite(R.fSm.se)?' ± '+R.fSm.se.toFixed(3):''} <span style="color:var(--muted)">exact 2/3 = 0.667 as N → ∞; corrections are large at these sizes</span>`:'Waiting for at least three sizes.';
+  const s6=[{dots:true,r:3.5,color:C.l256,pts:R.ns||[]}];
+  if (R.ns && R.ns.length){ const q=R.ns.find(p=>p[0]>=3)||R.ns[0]; s6.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:[1,3e4].map(s=>[s,q[1]*Math.pow(s/q[0],-2.5)])}); }
+  plot($('e6'),{logx:true,logy:true,series:s6,xlabel:'component size s',ylabel:'n_s'});
+  $('t6').innerHTML=R.fT?`Slope for 3 ≤ s ≤ 300: τ ≈ <b>${(-R.fT.slope).toFixed(3)}</b> <span style="color:var(--muted)">exact 5/2</span>`:'Waiting for N = 100 000.';
+  const rows=[['β','S ∝ (⟨k⟩ − 1)<sup>β</sup>',R.fB?R.fB.slope:NaN,'1'],['γ<sub>p</sub>','⟨s⟩ ∝ (1 − ⟨k⟩)<sup>−γ<sub>p</sub></sup>',R.fG?-R.fG.slope:NaN,'1'],['τ','n<sub>s</sub> ∝ s<sup>−τ</sup> at ⟨k⟩ = 1',R.fT?-R.fT.slope:NaN,'5/2'],['S<sub>max</sub> exponent','S<sub>max</sub> ∝ N<sup>2/3</sup> at ⟨k⟩ = 1',R.fSm?R.fSm.slope:NaN,'2/3'],['⟨k⟩<sub>c</sub>','threshold mean degree','–','1']];
+  $('erTable').innerHTML='<thead><tr><th>Quantity</th><th>Definition</th><th style="text-align:right">This run</th><th style="text-align:right">Mean field (exact)</th></tr></thead><tbody>'+rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="num">${typeof r[2]==='number'?f3(r[2]):r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')+'</tbody>';
+}
+function logBinDeg(hist){
+  const out=[]; let tot=0; for (let k=0;k<hist.length;k++) tot+=hist[k]; if (!tot) return out;
+  const b=1.35; let lo=1;
+  while (lo<hist.length){ const hi=Math.max(lo+1,Math.ceil(lo*b)); let c=0; for (let k=lo;k<hi&&k<hist.length;k++) c+=hist[k]; if (c>0) out.push([Math.sqrt(lo*(hi-1)),c/tot/(hi-lo)]); lo=hi; }
+  return out;
+}
+function drawB(){
+  const sf=bS.filter(s=>s.type==='sf'), er=bS.filter(s=>s.type==='er');
+  const bigSF=sf.find(s=>s.N===100000), bigER=er.find(s=>s.N===100000);
+  const d1=[];
+  if (bigER.cnt) d1.push({dots:true,r:3.5,color:C.ink,pts:logBinDeg(bigER.hist)});
+  if (bigSF.cnt){ const pts=logBinDeg(bigSF.hist); d1.push({dots:true,r:3.5,color:C.crit,pts}); const q=pts.find(p=>p[0]>=SFM*2)||pts[0]; if (q) d1.push({color:C.crit,dash:[6,4],width:1.2,noScale:true,pts:[SFM,1e5].map(k=>[k,q[1]*Math.pow(k/q[0],-SFG)])}); }
+  plot($('b1'),{logx:true,logy:true,series:d1,xlabel:'degree k',ylabel:'p(k)'});
+  const pcTh=s=>{ if (!s.cnt) return NaN; const k1=s.k1/s.cnt, k2=s.k2/s.cnt; return k1/(k2-k1); };
+  const pcMe=s=>{ if (!s.cnt) return NaN; let b=0, j0=0; for (let j=1;j<PG && PGRID[j]<=0.6;j++) if (s.chi[j]>b){ b=s.chi[j]; j0=j; } return PGRID[j0]; };
+  const curves=(list,key)=>list.filter(s=>s.cnt).map(s=>({color:NCOL(s.N),pts:PGRID.map((p,j)=>[p,s[key][j]/s.cnt])}));
+  const thS=(s)=>s&&s.theory?[{color:C.ink,dash:[6,4],width:1.3,pts:PGRID.map((p,j)=>[p,s.theory[j]])}]:[];
+  plot($('b2'),{x:[0,1],y:[-0.02,1.02],series:curves(er,'S').concat(thS(bigER)),vlines:er.filter(s=>s.cnt).map(s=>({x:pcTh(s),color:NCOL(s.N),dash:[4,4]})),xlabel:'p',ylabel:'S'});
+  plot($('b3'),{x:[0,1],y:[-0.02,1.02],series:curves(sf,'S').concat(thS(bigSF)),vlines:sf.filter(s=>s.cnt).map(s=>({x:pcTh(s),color:NCOL(s.N),dash:[4,4]})),xlabel:'p',ylabel:'S'});
+  plot($('b4'),{x:[0,1],zeroY:true,series:curves(sf,'chi').concat(curves(er,'chi').map(c=>Object.assign(c,{dash:[5,4],width:1.2}))),xlabel:'p',ylabel:'⟨s⟩'});
+  const line=(list,color)=>{ const q=list.filter(s=>s.cnt); return [{color,width:1.6,pts:q.map(s=>[s.N,pcTh(s)])},{dots:true,r:5,color,pts:q.map(s=>[s.N,pcMe(s)])}]; };
+  plot($('b5'),{x:[800,130000],logx:true,logy:true,xticks:BN,xfmt:fmtN,series:line(er,C.ink).concat(line(sf,C.crit)),xlabel:'N',ylabel:'p_c'});
+  $('momTable').innerHTML='<thead><tr><th>Network</th><th style="text-align:right">N</th><th style="text-align:right">⟨k⟩</th><th style="text-align:right">⟨k²⟩</th><th style="text-align:right">largest degree</th><th style="text-align:right">p<sub>c</sub> = ⟨k⟩/(⟨k²⟩ − ⟨k⟩)</th><th style="text-align:right">peak of ⟨s⟩</th></tr></thead><tbody>'+
+    ['er','sf'].map(t=>bS.filter(s=>s.type===t).map(s=>`<tr><td><b>${t==='er'?'Erdős–Rényi':'Scale-free, γ = '+SFG}</b></td><td class="num">${fmtN(s.N)}</td><td class="num">${s.cnt?f3(s.k1/s.cnt,2):'–'}</td><td class="num">${s.cnt?f3(s.k2/s.cnt,1):'–'}</td><td class="num">${s.cnt?Math.round(s.kmax/s.cnt):'–'}</td><td class="num">${f3(pcTh(s),4)}</td><td class="num">${f3(pcMe(s),3)}</td></tr>`).join('')).join('')+'</tbody>';
+  const beta=g=>g>4?'1':g>3?(1/(g-3)).toFixed(3):g>2?(1/(3-g)).toFixed(3):'–';
+  $('sfTable').innerHTML='<thead><tr><th>Network</th><th>Threshold as N → ∞</th><th>β near the threshold</th><th>Your setting</th></tr></thead><tbody>'+
+    `<tr><td><b>Erdős–Rényi</b></td><td>p<sub>c</sub> = 1/⟨k⟩ &gt; 0</td><td>1</td><td></td></tr>`+
+    `<tr><td><b>Scale-free, γ &gt; 4</b></td><td>p<sub>c</sub> &gt; 0</td><td>1 (mean field)</td><td>${SFG>4?'γ = '+SFG:''}</td></tr>`+
+    `<tr><td><b>Scale-free, 3 &lt; γ &lt; 4</b></td><td>p<sub>c</sub> &gt; 0</td><td>1/(γ − 3)</td><td>${SFG>3&&SFG<4?'γ = '+SFG+': β = '+beta(SFG):''}</td></tr>`+
+    `<tr><td><b>Scale-free, 2 &lt; γ &lt; 3</b></td><td>p<sub>c</sub> → 0, no critical point</td><td>1/(3 − γ)</td><td>${SFG>2&&SFG<3?'γ = '+SFG+': β = '+beta(SFG):''}</td></tr></tbody>`;
+}
+function drawAll(){ drawE(); drawB(); status(); }
+
+/* ---------- live network ---------- */
+const NV={type:'gnp',k:4,gamma:2.5,kmin:2,N:300,seed:1,p:0.005,pmax:1,showRem:false,mode:'big',logp:true};
+let PAL=[];
+function buildPal(){ const dark=hexRgb(C.panel)[0]<100; PAL=[]; for (let i=0;i<24;i++){ const h=(i*137.508+30)%360; PAL.push(`hsl(${h.toFixed(0)} ${dark?38:40}% ${dark?55:58}%)`); } }
+function layout(N, eu, ev, rnd){
+  const x=new Float64Array(N), y=new Float64Array(N), dx=new Float64Array(N), dy=new Float64Array(N);
+  for (let i=0;i<N;i++){ x[i]=rnd(); y[i]=rnd(); }
+  const K=0.9*Math.sqrt(1/N), iters=320;
+  for (let it=0;it<iters;it++){
+    const temp=0.08*(1-it/iters)+0.002;
+    dx.fill(0); dy.fill(0);
+    for (let i=0;i<N;i++) for (let j=i+1;j<N;j++){ let ux=x[i]-x[j], uy=y[i]-y[j]; let d2=ux*ux+uy*uy; if (d2<1e-8){ ux=1e-4; uy=0; d2=1e-8; } const f=K*K/d2; dx[i]+=ux*f; dy[i]+=uy*f; dx[j]-=ux*f; dy[j]-=uy*f; }
+    for (let e=0;e<eu.length;e++){ const a=eu[e], b=ev[e]; const ux=x[a]-x[b], uy=y[a]-y[b]; const d=Math.sqrt(ux*ux+uy*uy)+1e-9; const f=d/K; dx[a]-=ux*f; dy[a]-=uy*f; dx[b]+=ux*f; dy[b]+=uy*f; }
+    for (let i=0;i<N;i++){ dx[i]+=(0.5-x[i])*1.2; dy[i]+=(0.5-y[i])*1.2; const d=Math.sqrt(dx[i]*dx[i]+dy[i]*dy[i])+1e-12, s=Math.min(d,temp)/d; x[i]+=dx[i]*s; y[i]+=dy[i]*s; }
+  }
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity; for (let i=0;i<N;i++){ x0=Math.min(x0,x[i]); x1=Math.max(x1,x[i]); y0=Math.min(y0,y[i]); y1=Math.max(y1,y[i]); }
+  const sc=1/Math.max(x1-x0,y1-y0,1e-9); for (let i=0;i<N;i++){ x[i]=(x[i]-x0)*sc+(1-(x1-x0)*sc)/2; y[i]=(y[i]-y0)*sc+(1-(y1-y0)*sc)/2; }
+  return {x,y};
+}
+function fmtP(p){ return NV.type==='gnp' ? (p===0?'0':p>=0.1?p.toFixed(3):p.toPrecision(3)) : p.toFixed(3); }
+const PLOG=1e-4;
+function useLog(){ return NV.type==='gnp' && NV.logp; }
+function p2t(p){ if (!useLog()) return 1000*p; if (p<=PLOG) return 0; return 1000*Math.log10(p/PLOG)/Math.log10(1/PLOG); }
+function t2p(t){ t=+t; if (!useLog()) return t/1000; if (t<=0) return 0; return PLOG*Math.pow(1/PLOG,t/1000); }
+function buildView(){
+  stopOutbreak(); stopPlay();
+  const rnd=mulberry32(NV.seed*1013+NV.N*7+({er:0,gnp:3,sf:5})[NV.type]);
+  const t=NV.type, Nn=NV.N;
+  let g;
+  if (t==='gnp'){
+    const M=Nn*(Nn-1)/2, eu=new Int32Array(M), ev=new Int32Array(M); NV.u=new Float32Array(M); let e=0;
+    for (let a=0;a<Nn;a++) for (let b=a+1;b<Nn;b++){ eu[e]=a; ev[e]=b; NV.u[e]=rnd(); e++; }
+    g={N:Nn,M,eu,ev};
+  } else {
+    g = t==='er' ? runSync(genER(Nn,Math.round(NV.k*Nn/2),rnd)) : runSync(genSF(Nn,NV.gamma,NV.kmin,rnd));
+    NV.u=new Float32Array(g.M); for (let e=0;e<g.M;e++) NV.u[e]=rnd();
+  }
+  NV.g=g; NV.deg=degreesOf(g);
+  const N=g.N, start=new Int32Array(N+1); for (let i=0;i<N;i++) start[i+1]=start[i]+NV.deg[i];
+  const fill=start.slice(0,N), adj=new Int32Array(2*g.M), adjE=new Int32Array(2*g.M);
+  for (let e=0;e<g.M;e++){ const a=g.eu[e], b=g.ev[e]; adj[fill[a]]=b; adjE[fill[a]++]=e; adj[fill[b]]=a; adjE[fill[b]++]=e; }
+  NV.start=start; NV.adj=adj; NV.adjE=adjE;
+  let s1=0,s2=0; for (let i=0;i<N;i++){ s1+=NV.deg[i]; s2+=NV.deg[i]**2; } s1/=N; s2/=N;
+  NV.pc= t==='gnp' ? 1/(N-1) : Math.min(1,s1/(s2-s1));
+  if (t==='gnp'){ const lay=[]; for (let e=0;e<g.M;e++) if (NV.u[e]<4/(N-1)) lay.push(e); NV.pos=layout(N,Int32Array.from(lay,e=>g.eu[e]),Int32Array.from(lay,e=>g.ev[e]),rnd); }
+  else NV.pos=layout(N,g.eu,g.ev,rnd);
+  buildCurve();
+  $('pcMark').style.left=(p2t(NV.pc)/10).toFixed(2)+'%';
+  $('remWrap').hidden=(t==='gnp'); $('logWrap').hidden=(t!=='gnp');
+  $('lKept').textContent= t==='gnp' ? 'Links present' : 'Links kept';
+  $('lPc').innerHTML = t==='gnp' ? 'p<sub>c</sub> = 1/(N − 1), where ⟨k⟩ = 1' : 'p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩) for this network';
+  const notes={
+    gnp:'p is the connection probability that characterizes the Erdős–Rényi graph G(N, p): starting from the fully connected graph, each of the N(N − 1)/2 pairs is linked with probability p, from the empty graph at p = 0 to the complete graph at p = 1, with ⟨k⟩ = p(N − 1). The giant component appears already at p<sub>c</sub> = 1/(N − 1).',
+    er:'p is the chance that each link of a fixed Erdős–Rényi network with mean degree ⟨k⟩ is kept (bond percolation), so the kept network has mean degree p⟨k⟩. For an epidemic p is the transmissibility.',
+    sf:'p is the chance that each link of the scale-free network is kept (bond percolation). For an epidemic it is the transmissibility, the chance that a link passes the infection on.'};
+  $('pNote').innerHTML=notes[t];
+  $('netNote').textContent= t==='gnp' ? `N = ${N} nodes and all ${g.M} possible pairs. Every pair has its own random number and is linked once p exceeds it, so raising p only adds links. The layout is fixed from the network at ⟨k⟩ = 4. The largest component is blue.`
+    : t==='er' ? `N = ${N} nodes and ${g.M} links in the full network. Node size grows with degree; the largest component is blue.`
+    : `N = ${N} nodes and ${g.M} links in the full network, degrees from p(k) ∝ k^−${NV.gamma} with minimum ${NV.kmin} and largest ${Math.max(...NV.deg)}. Node size grows with degree; the largest component is blue.`;
+  updateView();
+}
+function updateView(){
+  const g=NV.g, N=g.N, parent=new Int32Array(N), size=new Int32Array(N);
+  for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const q=parent[parent[i]]; parent[i]=q; i=q; } return i; };
+  let kept=0;
+  for (let e=0;e<g.M;e++){ if (NV.u[e]>=NV.p) continue; kept++; let a=find(g.eu[e]), b=find(g.ev[e]); if (a!==b){ if (size[a]<size[b]){ const t=a; a=b; b=t; } parent[b]=a; size[a]+=size[b]; } }
+  for (let i=0;i<N;i++) parent[i]=find(i);
+  let smax=0, mr=-1, s2nd=0, nc=0, S2=0;
+  for (let i=0;i<N;i++) if (parent[i]===i){ nc++; const s=size[i]; S2+=s*s; if (s>smax){ s2nd=smax; smax=s; mr=i; } else if (s>s2nd) s2nd=s; }
+  NV.root=parent; NV.size=size; NV.mr=mr; NV.kept=kept;
+  $('pOut').textContent=fmtP(NV.p); $('p').value=p2t(NV.p);
+  $('rKept').textContent= NV.type==='gnp' ? `${kept} of ${N*(N-1)/2} pairs` : `${kept} of ${g.M}`;
+  $('rKm').textContent=(2*kept/N).toFixed(3);
+  $('rDen').textContent=(2*kept/(N*(N-1))).toFixed(5);
+  $('rS').textContent=(smax/N).toFixed(3);
+  $('rS2').textContent=`${s2nd} nodes`;
+  $('rNc').textContent=nc;
+  $('rChi').textContent= N>smax ? ((S2-smax*smax)/(N-smax)).toFixed(2) : '–';
+  $('rPc').textContent= NV.type==='gnp' ? NV.pc.toPrecision(3) : NV.pc.toFixed(3);
+  if (!NV.ob) $('rOut').textContent='not started';
+  renderNet(); drawCurve();
+}
+function renderNet(){
+  const cv=$('net'), dpr=window.devicePixelRatio||1, W=cv.clientWidth; if (!W||!NV.g) return;
+  const w=Math.round(W*dpr); if (cv.width!==w){ cv.width=w; cv.height=w; }
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=C.panel; ctx.fillRect(0,0,W,W);
+  const g=NV.g, m=14, X=i=>m+NV.pos.x[i]*(W-2*m), Y=i=>m+NV.pos.y[i]*(W-2*m);
+  const ob=NV.ob, sc=W/600, big=NV.mode==='big', mr=NV.mr, giantBig=NV.size[mr]>1;
+  const line=(e)=>{ ctx.beginPath(); ctx.moveTo(X(g.eu[e]),Y(g.eu[e])); ctx.lineTo(X(g.ev[e]),Y(g.ev[e])); ctx.stroke(); };
+  ctx.lineCap='round';
+  const seg=(e)=>{ ctx.moveTo(X(g.eu[e]),Y(g.eu[e])); ctx.lineTo(X(g.ev[e]),Y(g.ev[e])); };
+  if (NV.showRem && NV.type!=='gnp'){ ctx.strokeStyle=C.rule; ctx.globalAlpha=0.5; ctx.lineWidth=0.6; ctx.beginPath(); for (let e=0;e<g.M;e++) if (NV.u[e]>=NV.p) seg(e); ctx.stroke(); }
+  if (big){ ctx.strokeStyle=C.muted; ctx.globalAlpha=0.35; ctx.lineWidth=0.9; ctx.beginPath(); for (let e=0;e<g.M;e++) if (NV.u[e]<NV.p && NV.root[g.eu[e]]!==mr) seg(e); ctx.stroke(); }
+  else { ctx.globalAlpha=0.7; ctx.lineWidth=0.9; for (let e=0;e<g.M;e++){ if (NV.u[e]>=NV.p || NV.root[g.eu[e]]===mr) continue; ctx.strokeStyle=PAL[(Math.imul(NV.root[g.eu[e]],2654435761)>>>27)%PAL.length]; ctx.beginPath(); seg(e); ctx.stroke(); } }
+  if (giantBig){ const dense=NV.kept>4000; ctx.strokeStyle=C.accent; ctx.globalAlpha=dense?0.25:0.85; ctx.lineWidth=(dense?0.6:1.8)*Math.max(0.8,sc); const stride=Math.max(1,Math.floor(NV.kept/12000)); ctx.beginPath(); for (let e=0;e<g.M;e+=stride) if (NV.u[e]<NV.p && NV.root[g.eu[e]]===mr) seg(e); ctx.stroke(); }
+  if (ob){ ctx.strokeStyle=C.crit; ctx.globalAlpha=0.95; ctx.lineWidth=2.2; ob.tx.forEach(e=>line(e)); }
+  ctx.globalAlpha=1;
+  for (let i=0;i<g.N;i++){
+    const root=NV.root[i], inG=giantBig&&root===mr, rBase=(NV.type==="gnp"?4:Math.min(11,2.4+0.9*Math.sqrt(NV.deg[i])))*Math.max(0.7,sc);
+    const st=ob?ob.state[i]:0;
+    let r=rBase, fill, stroke=C.panel, alpha=1;
+    if (st){ fill=C.crit; alpha= st===2?0.5:1; }
+    else if (inG){ r=rBase*1.15; fill=C.accent; }
+    else if (NV.size[root]===1){ fill=C.panel; stroke=C.muted; r=rBase*0.85; }
+    else if (big){ fill=C.muted; alpha=0.55; r=rBase*0.85; }
+    else fill=PAL[(Math.imul(root,2654435761)>>>27)%PAL.length];
+    if (inG && !st){ ctx.globalAlpha=0.2; ctx.fillStyle=C.accent; ctx.beginPath(); ctx.arc(X(i),Y(i),r+4*Math.max(0.8,sc),0,7); ctx.fill(); }
+    ctx.globalAlpha=alpha; ctx.beginPath(); ctx.arc(X(i),Y(i),r,0,7); ctx.fillStyle=fill; ctx.fill();
+    ctx.globalAlpha=1; ctx.lineWidth=1; ctx.strokeStyle=stroke; ctx.stroke();
+    if (st===1){ ctx.strokeStyle=C.crit; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X(i),Y(i),r+3,0,7); ctx.stroke(); }
+  }
+  const S=NV.size[mr]/g.N, txt=`Largest component: ${(100*S).toFixed(1)}% of nodes`;
+  ctx.font=`600 ${Math.round(15*Math.max(0.8,sc))}px "Public Sans", system-ui, sans-serif`; ctx.textBaseline='top'; ctx.textAlign='left';
+  const tw=ctx.measureText(txt).width; ctx.fillStyle=C.panel; ctx.globalAlpha=0.85; ctx.fillRect(10,10,tw+16,26*Math.max(0.8,sc)); ctx.globalAlpha=1;
+  ctx.fillStyle=C.accent; ctx.fillText(txt,18,15);
+}
+function buildCurve(){
+  const g=NV.g, N=g.N, order=Array.from({length:g.M},(_,e)=>e).sort((a,b)=>NV.u[a]-NV.u[b]);
+  const parent=new Int32Array(N), size=new Int32Array(N); for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const q=parent[parent[i]]; parent[i]=q; i=q; } return i; };
+  let smax=1; const pts=[[0,1/N]];
+  for (const e of order){ let a=find(g.eu[e]), b=find(g.ev[e]); if (a!==b){ if (size[a]<size[b]){ const t=a; a=b; b=t; } parent[b]=a; size[a]+=size[b]; if (size[a]>smax){ pts.push([NV.u[e],smax/N]); smax=size[a]; pts.push([NV.u[e],smax/N]); } } }
+  pts.push([NV.pmax,smax/N]);
+  NV.curve=pts;
+  if (NV.type==='gnp'){ NV.theory=Array.from({length:400},(_,i)=>{ const p=PLOG*Math.pow(1/PLOG,i/399); return [p,erTheory(p*(N-1))]; }); }
+  else if (NV.type==='er'){ const k=2*g.M/N; NV.theory=PGRID.map(p=>[p,erTheory(p*k)]); }
+  else { const h=new Float64Array(N); for (let i=0;i<N;i++) h[NV.deg[i]]++; const t=gfTheory(h); NV.theory=PGRID.map((p,j)=>[p,t[j]]); }
+}
+function drawCurve(){
+  if (!NV.curve) return;
+  const S=NV.size[NV.mr]/NV.g.N;
+  const er=NV.type==='gnp', lg=useLog();
+  plot($('netS'),{x:lg?[PLOG,1]:[0,1],logx:lg,y:[0,1],series:[
+    {color:C.ink,dash:[6,4],width:1.2,pts:NV.theory},
+    {color:C.accent,width:2.2,pts:NV.curve},
+    {dots:true,r:6,color:C.accent,pts:[[NV.p,S]]}],
+    vlines:[{x:NV.pc,color:C.crit,dash:[4,4],label:'pc'},{x:NV.p,color:C.ink,width:1}],xlabel: er?'p, connection probability':'p, fraction of links kept',ylabel:'S'});
+  $('gFill').style.width=(100*S).toFixed(1)+'%';
+  $('gTxt').textContent=`${(100*S).toFixed(1)}% of nodes (${NV.size[NV.mr]} of ${NV.g.N})`;
+}
+function stopOutbreak(){ if (NV.ob && NV.ob.timer) clearTimeout(NV.ob.timer); NV.ob=null; }
+function startOutbreak(){
+  stopOutbreak();
+  const N=NV.g.N; let seed;
+  if ($('seedSel').value==='hub'){ seed=0; for (let i=1;i<N;i++) if (NV.deg[i]>NV.deg[seed]) seed=i; }
+  else seed=(Math.random()*N)|0;
+  const ob={state:new Uint8Array(N),cur:[seed],gen:0,tot:1,tx:new Set(),seed,timer:null};
+  ob.state[seed]=1; NV.ob=ob;
+  const compSize=NV.size[NV.root[seed]];
+  const step=()=>{
+    const next=[];
+    for (const v of ob.cur){ for (let q=NV.start[v];q<NV.start[v+1];q++){ const e=NV.adjE[q]; if (NV.u[e]>=NV.p) continue; const w=NV.adj[q]; if (ob.state[w]===0){ ob.state[w]=1; next.push(w); ob.tx.add(e); } } ob.state[v]=2; }
+    for (const w of next) ob.tot++;
+    ob.cur=next; ob.gen++;
+    if (next.length){ $('rOut').textContent=`generation ${ob.gen}: ${ob.tot} infected so far`; renderNet(); ob.timer=setTimeout(step,380); }
+    else { $('rOut').textContent=`over after ${ob.gen} generations: ${ob.tot} nodes (${(100*ob.tot/N).toFixed(1)}%), the whole component of the first case (${compSize})`; ob.timer=null; renderNet(); }
+  };
+  $('rOut').textContent='generation 0: 1 infected'; renderNet();
+  ob.timer=setTimeout(step,380);
+}
+
+/* ---------- wiring ---------- */
+let rafV=0;
+function setP(p,fromPlay){ if (!fromPlay) stopPlay(); NV.p=Math.min(1,Math.max(0,+p)); stopOutbreak(); if (!rafV) rafV=requestAnimationFrame(()=>{ rafV=0; updateView(); }); $('pOut').textContent=fmtP(NV.p); }
+$('p').addEventListener('input',e=>setP(t2p(e.target.value)));
+let play=null, scanPaused=false;
+function stopPlay(paused){ scanPaused=!!paused; if (play){ cancelAnimationFrame(play.raf); play=null; } $('play').textContent= scanPaused ? 'Resume the scan' : 'Scan through p'; }
+function startPlay(){
+  if (!scanPaused || NV.p>=0.999) NV.p=0;
+  scanPaused=false;
+  const dur=+$('speed').value; let last=performance.now();
+  play={raf:0}; $('play').textContent='Pause the scan';
+  const tick=now=>{ if (!play) return; const dt=now-last; last=now; const tt=Math.max(p2t(NV.p),0)+dt/dur*1000, p=t2p(tt);
+    if (tt>=1000){ setP(1,true); stopPlay(); return; } setP(p,true); play.raf=requestAnimationFrame(tick); };
+  play.raf=requestAnimationFrame(tick);
+}
+$('play').onclick=()=>{ if (play) stopPlay(true); else startPlay(); };
+document.querySelectorAll('input[name=cm]').forEach(r=>r.onchange=e=>{ NV.mode=e.target.value; renderNet(); });
+(function(){ const cv=$('netS'); let drag=false;
+  const at=e=>{ if (!cv._inv) return; const r=cv.getBoundingClientRect(); setP(cv._inv(e.clientX-r.left)); };
+  cv.addEventListener('pointerdown',e=>{ drag=true; cv.setPointerCapture(e.pointerId); at(e); });
+  cv.addEventListener('pointermove',e=>{ if (drag) at(e); });
+  cv.addEventListener('pointerup',()=>{ drag=false; });
+})();
+$('toPc').onclick=()=>setP(NV.pc);
+$('newNet').onclick=()=>{ NV.seed++; buildView(); };
+document.querySelectorAll('input[name=nt]').forEach(r=>r.onchange=e=>{ NV.type=e.target.value; NV.p = NV.type==='gnp' ? 1.5/(NV.N-1) : 0.35; $('fK').hidden=NV.type!=='er'; $('fG').hidden=NV.type!=='sf'; $('fM').hidden=NV.type!=='sf'; buildView(); });
+$('vG').onchange=e=>{ NV.gamma=+e.target.value; buildView(); };
+$('vM').onchange=e=>{ NV.kmin=+e.target.value; buildView(); };
+$('vN').onchange=e=>{ NV.N=+e.target.value; buildView(); };
+$('vK').onchange=e=>{ NV.k=+e.target.value; buildView(); };
+$('logP').onchange=e=>{ NV.logp=e.target.checked; $('pcMark').style.left=(p2t(NV.pc)/10).toFixed(2)+'%'; updateView(); };
+$('showRem').onchange=e=>{ NV.showRem=e.target.checked; renderNet(); };
+$('outbreak').onclick=startOutbreak;
+$('run').onclick=()=>{ if (running){ running=false; $('run').textContent='Resume'; status(); } else start(); };
+$('more').onclick=()=>{ tMul*=2; start(); };
+$('restart').onclick=()=>{ erS.forEach(s=>{ s.cnt=0; s.S.fill(0); s.chi.fill(0); s.smax1=0; s.logSmax1=0; s.hist.fill(0); }); tMul=1; makeBond(); job=null; refresh(); start(); };
+$('sRun').onclick=()=>{ SFG=+$('sG').value; SFM=+$('sM').value; makeBond(); job=null; refresh(); start(); };
+let rz=0;
+const ro=new ResizeObserver(()=>{ if (rz) return; rz=requestAnimationFrame(()=>{ rz=0; renderNet(); drawCurve(); drawAll(); }); });
+document.querySelectorAll('figure, .plate').forEach(el=>ro.observe(el));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ readColors(); buildPal(); renderNet(); drawCurve(); drawAll(); });
+
+readColors(); buildPal(); makeBond();
+buildView(); refresh();
+setTimeout(start,400);
+})();
+</script>
+</body>
+</html>
