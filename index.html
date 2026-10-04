@@ -128,6 +128,12 @@ ol.refs li{margin-bottom:8px}
 .gpc{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--crit); transform:translateX(-1px)}
 #gFill{position:absolute; left:0; top:0; bottom:0; width:0; background:var(--accent)}
 .curve-cap{font-size:13.5px; color:var(--muted); margin:0 0 6px} .curve-cap b{color:var(--ink); display:block; font-size:14.5px}
+
+.rad{white-space:nowrap}
+.rad .rs{display:inline-block; transform:scale(1.05,1.22); transform-origin:100% 85%; margin-right:-0.05em}
+.rad .rc{display:inline-block; border-top:0.075em solid currentColor; padding:0.04em 0.12em 0 0.1em; line-height:1.1}
+.ss{display:inline-flex; flex-direction:column; vertical-align:0.5em; line-height:1; font-size:0.72em; margin-left:0.04em; margin-right:0.04em}
+.ss sup,.ss sub{font-size:1em; vertical-align:baseline; line-height:1.02; position:static}
 </style>
 </head>
 <body>
@@ -302,6 +308,22 @@ function linReg(xs,ys){
   return {slope,icpt,se};
 }
 
+function richParts(s){ const out=[]; let i=0, buf=''; const push=(t,m)=>{ if (t) out.push({t,m}); };
+  while (i<s.length){ const ch=s[i];
+    if ((ch==='_'||ch==='^') && i+1<s.length){ push(buf,0); buf=''; const m=ch==='_'?1:2; let t;
+      if (s[i+1]==='{'){ const j=s.indexOf('}',i+2); t=s.slice(i+2,j<0?s.length:j); i=j<0?s.length:j+1; }
+      else { t=String.fromCodePoint(s.codePointAt(i+1)); i+=1+t.length; }
+      push(t,m); }
+    else { buf+=ch; i++; } }
+  push(buf,0); return out; }
+function drawRich(ctx,s,x,y){
+  const parts=richParts(String(s)); if (parts.length===1 && parts[0].m===0){ ctx.fillText(s,x,y); return; }
+  const font=ctx.font, mm=font.match(/(\d+(?:\.\d+)?)px/), px=mm?+mm[1]:11, small=font.replace(/(\d+(?:\.\d+)?)px/,(px*0.72).toFixed(1)+'px'), al=ctx.textAlign;
+  let w=0; parts.forEach(p=>{ ctx.font=p.m?small:font; p.w=ctx.measureText(p.t).width; w+=p.w; });
+  let x0= al==='center' ? x-w/2 : (al==='right'||al==='end') ? x-w : x;
+  ctx.textAlign='left';
+  parts.forEach(p=>{ ctx.font=p.m?small:font; ctx.fillText(p.t,x0,y+(p.m===1?px*0.32:p.m===2?-px*0.38:0)); x0+=p.w; });
+  ctx.textAlign=al; ctx.font=font; }
 /* ---------- plotting ---------- */
 const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
 const supNum = n => String(n).split('').map(c=>SUP[c]||c).join('');
@@ -353,7 +375,7 @@ function plot(cv,o){
   ticks(y0,y1,o.logy).forEach(([v,l])=>{ const py=Math.round(Y(v))+.5; ctx.beginPath(); ctx.moveTo(m.l,py); ctx.lineTo(m.l+pw,py); ctx.stroke(); ctx.fillText(l,m.l-6,py); });
   ctx.strokeStyle=C.rule; ctx.strokeRect(m.l+.5,m.t+.5,pw-1,ph-1);
   ctx.save(); ctx.beginPath(); ctx.rect(m.l,m.t,pw,ph); ctx.clip();
-  (o.vlines||[]).forEach(v=>{ if (v.x<x0||v.x>x1) return; ctx.strokeStyle=v.color; ctx.lineWidth=v.width||1; ctx.setLineDash(v.dash||[]); const px=X(v.x); ctx.beginPath(); ctx.moveTo(px,m.t); ctx.lineTo(px,m.t+ph); ctx.stroke(); ctx.setLineDash([]); if (v.label){ ctx.fillStyle=v.color; ctx.textAlign='left'; ctx.textBaseline='top'; ctx.fillText(v.label,px+4,m.t+4); } });
+  (o.vlines||[]).forEach(v=>{ if (v.x<x0||v.x>x1) return; ctx.strokeStyle=v.color; ctx.lineWidth=v.width||1; ctx.setLineDash(v.dash||[]); const px=X(v.x); ctx.beginPath(); ctx.moveTo(px,m.t); ctx.lineTo(px,m.t+ph); ctx.stroke(); ctx.setLineDash([]); if (v.label){ ctx.fillStyle=v.color; ctx.textAlign='left'; ctx.textBaseline='top'; drawRich(ctx,v.label,px+4,m.t+4); } });
   series.forEach(s=>{
     ctx.strokeStyle=s.color; ctx.fillStyle=s.color; ctx.lineWidth=s.width||1.6; ctx.setLineDash(s.dash||[]); ctx.globalAlpha=s.alpha||1;
     if (s.dots){ s.pts.forEach(p=>{ if (!isFinite(p[1])||(o.logy&&p[1]<=0)) return; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),s.r||4,0,7); ctx.fill(); }); }
@@ -362,8 +384,8 @@ function plot(cv,o){
   });
   ctx.restore();
   ctx.fillStyle=C.muted; ctx.textAlign='center'; ctx.textBaseline='bottom';
-  if (o.xlabel) ctx.fillText(o.xlabel, m.l+pw/2, H-1);
-  if (o.ylabel){ ctx.save(); ctx.translate(11,m.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textBaseline='middle'; ctx.fillText(o.ylabel,0,0); ctx.restore(); }
+  if (o.xlabel) drawRich(ctx,o.xlabel, m.l+pw/2, H-1);
+  if (o.ylabel){ ctx.save(); ctx.translate(11,m.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textBaseline='middle'; drawRich(ctx,o.ylabel,0,0); ctx.restore(); }
 }
 
 
@@ -543,7 +565,7 @@ function drawE(){
   plot($('e4'),{x:[0.005,1],logx:true,logy:true,series:s4,xlabel:'1 − ⟨k⟩',ylabel:'⟨s⟩'});
   $('t4').innerHTML=R.fG?`Slope for 0.05 ≤ 1 − ⟨k⟩ ≤ 0.5: −γ<sub>p</sub> ≈ <b>${R.fG.slope.toFixed(3)}</b> <span style="color:var(--muted)">exact −1, since ⟨s⟩ = 1/(1 − ⟨k⟩) below the threshold</span>`:'';
   const s5=[{dots:true,r:5,color:C.accent,pts:R.pSm||[]}]; if (R.fSm) s5.push({color:C.ink,dash:[6,4],width:1.2,pts:[800,130000].map(N=>[N,Math.exp(R.fSm.icpt+R.fSm.slope*Math.log(N))])});
-  plot($('e5'),{x:[800,130000],logx:true,logy:true,xticks:ERN,xfmt:fmtN,series:s5,xlabel:'N',ylabel:'S_max (nodes)'});
+  plot($('e5'),{x:[800,130000],logx:true,logy:true,xticks:ERN,xfmt:fmtN,series:s5,xlabel:'N',ylabel:'S_{max} (nodes)'});
   $('t5').innerHTML=R.fSm?`Slope: <b>${R.fSm.slope.toFixed(3)}</b>${isFinite(R.fSm.se)?' ± '+R.fSm.se.toFixed(3):''} <span style="color:var(--muted)">exact 2/3 = 0.667 as N → ∞; corrections are large at these sizes</span>`:'Waiting for at least three sizes.';
   const s6=[{dots:true,r:3.5,color:C.l256,pts:R.ns||[]}];
   if (R.ns && R.ns.length){ const q=R.ns.find(p=>p[0]>=3)||R.ns[0]; s6.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:[1,3e4].map(s=>[s,q[1]*Math.pow(s/q[0],-2.5)])}); }
@@ -723,7 +745,7 @@ function drawCurve(){
     {color:C.ink,dash:[6,4],width:1.2,pts:NV.theory},
     {color:C.accent,width:2.2,pts:NV.curve},
     {dots:true,r:6,color:C.accent,pts:[[NV.p,S]]}],
-    vlines:[{x:NV.pc,color:C.crit,dash:[4,4],label:'pc'},{x:NV.p,color:C.ink,width:1}],xlabel: er?'p, connection probability':'p, fraction of links kept',ylabel:'S'});
+    vlines:[{x:NV.pc,color:C.crit,dash:[4,4],label:'p_c'},{x:NV.p,color:C.ink,width:1}],xlabel: er?'p, connection probability':'p, fraction of links kept',ylabel:'S'});
   $('gFill').style.width=(100*S).toFixed(1)+'%';
   $('gTxt').textContent=`${(100*S).toFixed(1)}% of nodes (${NV.size[NV.mr]} of ${NV.g.N})`;
 }
