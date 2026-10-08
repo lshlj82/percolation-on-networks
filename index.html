@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Percolation on networks</title>
+<title>Percolation on networks · 네트워크 위의 스며들기 | Network Science demos</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -144,13 +144,22 @@ button.theme-btn:hover{background:var(--panel); color:var(--ink); border-color:v
 button.theme-btn:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
 button.theme-btn svg{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
 </style>
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:wght@600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Course-wide demo title: the same on every demo page and on the course landing page */
+h1.course-title{font-family:"STIX Two Text","Noto Serif KR",Cambria,"Times New Roman",serif !important;font-weight:600 !important;font-style:normal !important;font-size:clamp(30px,3.6vw,44px) !important;line-height:1.08 !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--ink) !important;word-break:keep-all}
+h1.course-title .course-title-ko{display:block;font-family:"Noto Serif KR","STIX Two Text",serif;font-weight:400;font-size:.5em;line-height:1.3;letter-spacing:0;color:var(--muted);margin:.3em 0 0}
+/* space above the title, so it starts about 48px (phones: 32px) below the top of the page */
+h1.course-title{margin-top:20px !important}
+@media (max-width:700px){h1.course-title{margin-top:4px !important}}
+</style>
 </head>
 <body>
 <button id="themeBtn" class="theme-btn" type="button" aria-label="Switch to light mode"></button>
 <div class="wrap">
 
 <header>
-  <h1>Percolation on networks</h1>
+  <h1 class="course-title">Percolation on networks<span class="course-title-ko" lang="ko">네트워크 위의 스며들기</span></h1>
   <p class="lede">A network is connected when every node can reach every other along a path of links. With few links it falls apart into separate components; add links and, past a critical point, one giant component suddenly holds a finite share of all nodes. This is the percolation transition. On Erdős–Rényi random graphs the threshold is sharp. On scale-free networks with p(k) ∝ k<sup>−γ</sup> and 2 &lt; γ &lt; 3, the degree has a finite mean but an infinite variance, the hubs make the threshold vanish, and an epidemic can always spread.</p>
   <p class="note" style="margin-top:6px">Based on lecture slides by Sang Hoon Lee for an introductory network science course. <a href="#references" style="color:var(--accent)">References</a></p>
 </header>
