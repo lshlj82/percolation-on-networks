@@ -65,6 +65,7 @@ input[type=range]{width:100%; accent-color:var(--accent); margin:0}
 .row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
 button,select{font:inherit; font-size:14px; color:var(--ink); background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:6px 11px; cursor:pointer}
 button:hover{border-color:var(--ink)}
+button:disabled{opacity:.45; cursor:not-allowed; border-color:var(--rule)}
 button.primary{background:var(--ink); color:var(--panel); border-color:var(--ink)}
 :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 fieldset{border:0; padding:0; margin:0}
@@ -271,6 +272,7 @@ h1.course-title{margin-top:20px !important}
     <figure><figcaption><b>Threshold against network size</b>Lines: p<sub>c</sub> = ⟨k⟩/(⟨k²⟩ − ⟨k⟩) from the simulated degrees. Dots: the peak of ⟨s⟩. The scale-free threshold keeps falling.</figcaption><canvas id="b5"></canvas></figure>
   </div>
   <div class="tbl"><table id="momTable" aria-label="Degree moments and thresholds"></table></div>
+  <p class="note" style="margin-top:10px">If ⟨k⟩/(⟨k²⟩ − ⟨k⟩) is larger than 1 (for example γ = 3.5 with minimum degree 1), even the full network with every link kept is below the Molloy–Reed threshold: there is no critical point in 0 ≤ p ≤ 1, and ⟨s⟩ keeps growing up to p = 1 instead of peaking.</p>
 </section>
 
 <section>
@@ -443,14 +445,17 @@ function degreesOf(g){ const d=new Int32Array(g.N); for (let e=0;e<g.M;e++){ d[g
 /* ---------- ER sweep: giant component against mean degree ---------- */
 const ERN=[1000,3000,10000,30000,100000], ERRUNS=[400,150,60,20,8];
 const KMAXE=4, KG=401, KSTEP=0.01, I1=100;
-let tMul=1;
+let tMul=1, erGen=0;
 const erS=ERN.map((N,i)=>({kind:'er',N,base:ERRUNS[i],cnt:0,S:new Float64Array(KG),chi:new Float64Array(KG),smax1:0,logSmax1:0,hist:new Float64Array(48)}));
 const target=st=>st.base*tMul;
 function* erRun(st){
-  const N=st.N, parent=new Int32Array(N), size=new Int32Array(N);
+  const gen=erGen, N=st.N, parent=new Int32Array(N), size=new Int32Array(N);
   for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
   const find=i=>{ while (parent[i]!==i){ const g=parent[parent[i]]; parent[i]=g; i=g; } return i; };
-  const seen=new Set(); let m=0, smax=1, S2=N, t=0;
+  // this sample is kept in local arrays and merged into st only when it is complete,
+  // so an unfinished or cancelled sample never enters the averages
+  const seen=new Set(), Sl=new Float64Array(KG), Cl=new Float64Array(KG), hl=st.N===100000?new Float64Array(48):null;
+  let m=0, smax=1, S2=N, t=0, sm1=0;
   for (let i=0;i<KG;i++){
     const tg=Math.round(i*KSTEP*N/2);
     while (m<tg){
@@ -460,12 +465,16 @@ function* erRun(st){
       if (ra!==rb){ if (size[ra]<size[rb]){ const x=ra; ra=rb; rb=x; } S2+=2*size[ra]*size[rb]; parent[rb]=ra; size[ra]+=size[rb]; if (size[ra]>smax) smax=size[ra]; }
       if ((++t & 16383)===0) yield;
     }
-    st.S[i]+=smax/N; st.chi[i]+= N>smax ? (S2-smax*smax)/(N-smax) : 0;
+    Sl[i]=smax/N; Cl[i]= N>smax ? (S2-smax*smax)/(N-smax) : 0;
     if (i===I1){
-      st.smax1+=smax; st.logSmax1+=Math.log(smax);
-      if (N===100000){ const lb=Math.log(1.5); let skip=true; for (let v=0;v<N;v++) if (parent[v]===v){ const s=size[v]; if (s===smax && skip){ skip=false; continue; } st.hist[Math.floor(Math.log(s)/lb+1e-9)]+=1; } }
+      sm1=smax;
+      if (hl){ const lb=Math.log(1.5); let skip=true; for (let v=0;v<N;v++) if (parent[v]===v){ const s=size[v]; if (s===smax && skip){ skip=false; continue; } hl[Math.floor(Math.log(s)/lb+1e-9)]+=1; } }
     }
   }
+  if (gen!==erGen) return;
+  for (let i=0;i<KG;i++){ st.S[i]+=Sl[i]; st.chi[i]+=Cl[i]; }
+  st.smax1+=sm1; st.logSmax1+=Math.log(sm1);
+  if (hl) for (let k=0;k<48;k++) st.hist[k]+=hl[k];
   st.cnt++;
 }
 
@@ -487,7 +496,7 @@ function* bondRun(st){
     g=yield* genER(N,Math.round(km*N/2),rnd);
   }
   const d=degreesOf(g); let s1=0,s2=0,mx=0;
-  for (let i=0;i<N;i++){ const k=d[i]; s1+=k; s2+=k*k; if (k>mx) mx=k; st.hist[k]+=1; }
+  for (let i=0;i<N;i++){ const k=d[i]; s1+=k; s2+=k*k; if (k>mx) mx=k; }
   const M=g.M, order=new Int32Array(M); for (let e=0;e<M;e++) order[e]=e;
   for (let e=M-1;e>0;e--){ const j=(rnd()*(e+1))|0; const x=order[e]; order[e]=order[j]; order[j]=x; }
   yield;
@@ -503,6 +512,7 @@ function* bondRun(st){
   }
   if (st.gen!==bGen) return;
   for (let j=0;j<PG;j++){ st.S[j]+=Sl[j]; st.chi[j]+=Cl[j]; }
+  for (let i=0;i<N;i++) st.hist[d[i]]+=1;
   st.k1+=s1/N; st.k2+=s2/N; st.kmax+=mx; if (!isFinite(st.kmean0)) st.kmean0=s1/N;
   st.cnt++;
 }
@@ -556,6 +566,7 @@ function refresh(){
   const big=useE.length?useE[useE.length-1]:null;
   R.big=big;
   const fitOn=(pts,lo,hi)=>{ const q=pts.filter(p=>p[0]>=lo&&p[0]<=hi&&p[1]>0); return q.length>=3?linReg(q.map(p=>Math.log(p[0])),q.map(p=>Math.log(p[1]))):null; };
+  R.pB=R.pG=R.fB=R.fG=R.thB=null;
   if (big){
     R.pB=KGRID.map((k,i)=>[k-1,big.S[i]/big.cnt]).filter(p=>p[0]>0);
     R.pG=KGRID.map((k,i)=>[1-k,big.chi[i]/big.cnt]).filter(p=>p[0]>0);
@@ -607,7 +618,11 @@ function drawB(){
   if (bigSF.cnt){ const pts=logBinDeg(bigSF.hist); d1.push({dots:true,r:3.5,color:C.crit,pts}); const q=pts.find(p=>p[0]>=SFM*2)||pts[0]; if (q) d1.push({color:C.crit,dash:[6,4],width:1.2,noScale:true,pts:[SFM,1e5].map(k=>[k,q[1]*Math.pow(k/q[0],-SFG)])}); }
   plot($('b1'),{logx:true,logy:true,series:d1,xlabel:'degree k',ylabel:'p(k)'});
   const pcTh=s=>{ if (!s.cnt) return NaN; const k1=s.k1/s.cnt, k2=s.k2/s.cnt; return k1/(k2-k1); };
-  const pcMe=s=>{ if (!s.cnt) return NaN; let b=0, j0=0; for (let j=1;j<PG && PGRID[j]<=0.6;j++) if (s.chi[j]>b){ b=s.chi[j]; j0=j; } return PGRID[j0]; };
+  // peak of ⟨s⟩ over the whole range of p; a maximum at the end p = 1 is not an interior peak
+  const peakJ=s=>{ if (!s.cnt) return -1; let b=0, j0=0; for (let j=1;j<PG;j++) if (s.chi[j]>b){ b=s.chi[j]; j0=j; } return j0; };
+  const pcMe=s=>{ const j=peakJ(s); return j>0 && j<PG-1 ? PGRID[j] : NaN; };
+  const pcMeTxt=s=>{ const j=peakJ(s); return j<=0 ? '–' : j===PG-1 ? 'none inside (max at p = 1)' : f3(PGRID[j],3); };
+  const pcThTxt=s=>{ const v=pcTh(s); return !s.cnt ? '–' : v>=0 && v<=1 ? f3(v,4) : (isFinite(v)?f3(v,4)+' &gt; 1: none in [0, 1]':'none in [0, 1]'); };
   const curves=(list,key)=>list.filter(s=>s.cnt).map(s=>({color:NCOL(s.N),pts:PGRID.map((p,j)=>[p,s[key][j]/s.cnt])}));
   const thS=(s)=>s&&s.theory?[{color:C.ink,dash:[6,4],width:1.3,pts:PGRID.map((p,j)=>[p,s.theory[j]])}]:[];
   plot($('b2'),{x:[0,1],y:[-0.02,1.02],series:curves(er,'S').concat(thS(bigER)),vlines:er.filter(s=>s.cnt).map(s=>({x:pcTh(s),color:NCOL(s.N),dash:[4,4]})),xlabel:'p',ylabel:'S'});
@@ -616,7 +631,7 @@ function drawB(){
   const line=(list,color)=>{ const q=list.filter(s=>s.cnt); return [{color,width:1.6,pts:q.map(s=>[s.N,pcTh(s)])},{dots:true,r:5,color,pts:q.map(s=>[s.N,pcMe(s)])}]; };
   plot($('b5'),{x:[800,130000],logx:true,logy:true,xticks:BN,xfmt:fmtN,series:line(er,C.ink).concat(line(sf,C.crit)),xlabel:'N',ylabel:'p_c'});
   $('momTable').innerHTML='<thead><tr><th>Network</th><th style="text-align:right">N</th><th style="text-align:right">⟨k⟩</th><th style="text-align:right">⟨k²⟩</th><th style="text-align:right">largest degree</th><th style="text-align:right">p<sub>c</sub> = ⟨k⟩/(⟨k²⟩ − ⟨k⟩)</th><th style="text-align:right">peak of ⟨s⟩</th></tr></thead><tbody>'+
-    ['er','sf'].map(t=>bS.filter(s=>s.type===t).map(s=>`<tr><td><b>${t==='er'?'Erdős–Rényi':'Scale-free, γ = '+SFG}</b></td><td class="num">${fmtN(s.N)}</td><td class="num">${s.cnt?f3(s.k1/s.cnt,2):'–'}</td><td class="num">${s.cnt?f3(s.k2/s.cnt,1):'–'}</td><td class="num">${s.cnt?Math.round(s.kmax/s.cnt):'–'}</td><td class="num">${f3(pcTh(s),4)}</td><td class="num">${f3(pcMe(s),3)}</td></tr>`).join('')).join('')+'</tbody>';
+    ['er','sf'].map(t=>bS.filter(s=>s.type===t).map(s=>`<tr><td><b>${t==='er'?'Erdős–Rényi':'Scale-free, γ = '+SFG}</b></td><td class="num">${fmtN(s.N)}</td><td class="num">${s.cnt?f3(s.k1/s.cnt,2):'–'}</td><td class="num">${s.cnt?f3(s.k2/s.cnt,1):'–'}</td><td class="num">${s.cnt?Math.round(s.kmax/s.cnt):'–'}</td><td class="num">${pcThTxt(s)}</td><td class="num">${pcMeTxt(s)}</td></tr>`).join('')).join('')+'</tbody>';
   const beta=g=>g>4?'1':g>3?(1/(g-3)).toFixed(3):g>2?(1/(3-g)).toFixed(3):'–';
   $('sfTable').innerHTML='<thead><tr><th>Network</th><th>Threshold as N → ∞</th><th>β near the threshold</th><th>Your setting</th></tr></thead><tbody>'+
     `<tr><td><b>Erdős–Rényi</b></td><td>p<sub>c</sub> = 1/⟨k⟩ &gt; 0</td><td>1</td><td></td></tr>`+
@@ -645,12 +660,21 @@ function layout(N, eu, ev, rnd){
   const sc=1/Math.max(x1-x0,y1-y0,1e-9); for (let i=0;i<N;i++){ x[i]=(x[i]-x0)*sc+(1-(x1-x0)*sc)/2; y[i]=(y[i]-y0)*sc+(1-(y1-y0)*sc)/2; }
   return {x,y};
 }
+function placePcMark(){
+  const m=$('pcMark'); m.hidden=!NV.pcIn; if (NV.pcIn) m.style.left=(p2t(NV.pc)/10).toFixed(2)+'%';
+  const b=$('toPc'); b.disabled=!NV.pcIn; b.title= NV.pcIn ? '' : 'This network has no critical point in [0, 1]';
+}
 function fmtP(p){ return NV.type==='gnp' ? (p===0?'0':p>=0.1?p.toFixed(3):p.toPrecision(3)) : p.toFixed(3); }
 const PLOG=1e-4;
 function useLog(){ return NV.type==='gnp' && NV.logp; }
 function p2t(p){ if (!useLog()) return 1000*p; if (p<=PLOG) return 0; return 1000*Math.log10(p/PLOG)/Math.log10(1/PLOG); }
 function t2p(t){ t=+t; if (!useLog()) return t/1000; if (t<=0) return 0; return PLOG*Math.pow(1/PLOG,t/1000); }
+const layCache=new Map();
+let buildT=0;
+// several quick changes of the network settings lead to a single rebuild with the latest settings
+function scheduleBuild(){ stopOutbreak(); stopPlay(); if (!buildT) buildT=setTimeout(()=>{ buildT=0; buildView(); },40); }
 function buildView(){
+  if (buildT){ clearTimeout(buildT); buildT=0; }
   stopOutbreak(); stopPlay();
   const rnd=mulberry32(NV.seed*1013+NV.N*7+({er:0,gnp:3,sf:5})[NV.type]);
   const t=NV.type, Nn=NV.N;
@@ -669,11 +693,18 @@ function buildView(){
   for (let e=0;e<g.M;e++){ const a=g.eu[e], b=g.ev[e]; adj[fill[a]]=b; adjE[fill[a]++]=e; adj[fill[b]]=a; adjE[fill[b]++]=e; }
   NV.start=start; NV.adj=adj; NV.adjE=adjE;
   let s1=0,s2=0; for (let i=0;i<N;i++){ s1+=NV.deg[i]; s2+=NV.deg[i]**2; } s1/=N; s2/=N;
-  NV.pc= t==='gnp' ? 1/(N-1) : Math.min(1,s1/(s2-s1));
-  if (t==='gnp'){ const lay=[]; for (let e=0;e<g.M;e++) if (NV.u[e]<4/(N-1)) lay.push(e); NV.pos=layout(N,Int32Array.from(lay,e=>g.eu[e]),Int32Array.from(lay,e=>g.ev[e]),rnd); }
+  // keep the moment value even when it exceeds 1: then the approximation has no critical point in [0, 1]
+  NV.pc= t==='gnp' ? 1/(N-1) : (s2>s1 ? s1/(s2-s1) : Infinity);
+  NV.pcIn= NV.pc>=0 && NV.pc<=1;
+  // the force layout visits all node pairs on each of its iterations, so reuse it when the same network comes back
+  const key=[t,Nn,NV.seed,t==='er'?NV.k:'',t==='sf'?NV.gamma+'/'+NV.kmin:''].join('|');
+  NV.pos=layCache.get(key);
+  if (NV.pos){ layCache.delete(key); }
+  else if (t==='gnp'){ const lay=[]; for (let e=0;e<g.M;e++) if (NV.u[e]<4/(N-1)) lay.push(e); NV.pos=layout(N,Int32Array.from(lay,e=>g.eu[e]),Int32Array.from(lay,e=>g.ev[e]),rnd); }
   else NV.pos=layout(N,g.eu,g.ev,rnd);
+  layCache.set(key,NV.pos); if (layCache.size>12) layCache.delete(layCache.keys().next().value);
   buildCurve();
-  $('pcMark').style.left=(p2t(NV.pc)/10).toFixed(2)+'%';
+  placePcMark();
   $('remWrap').hidden=(t==='gnp'); $('logWrap').hidden=(t!=='gnp');
   $('lKept').textContent= t==='gnp' ? 'Links present' : 'Links kept';
   $('lPc').innerHTML = t==='gnp' ? 'p<sub>c</sub> = 1/(N − 1), where ⟨k⟩ = 1' : 'p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩) for this network';
@@ -705,7 +736,7 @@ function updateView(){
   $('rS2').textContent=`${s2nd} nodes`;
   $('rNc').textContent=nc;
   $('rChi').textContent= N>smax ? ((S2-smax*smax)/(N-smax)).toFixed(2) : '–';
-  $('rPc').textContent= NV.type==='gnp' ? NV.pc.toPrecision(3) : NV.pc.toFixed(3);
+  $('rPc').textContent= NV.type==='gnp' ? NV.pc.toPrecision(3) : NV.pcIn ? NV.pc.toFixed(3) : (isFinite(NV.pc) ? NV.pc.toFixed(3)+' > 1: no critical point in [0, 1]' : 'no critical point in [0, 1]');
   if (!NV.ob) $('rOut').textContent='not started';
   renderNet(); drawCurve();
 }
@@ -764,7 +795,7 @@ function drawCurve(){
     {color:C.ink,dash:[6,4],width:1.2,pts:NV.theory},
     {color:C.accent,width:2.2,pts:NV.curve},
     {dots:true,r:6,color:C.accent,pts:[[NV.p,S]]}],
-    vlines:[{x:NV.pc,color:C.crit,dash:[4,4],label:'p_c'},{x:NV.p,color:C.ink,width:1}],xlabel: er?'p, connection probability':'p, fraction of links kept',ylabel:'S'});
+    vlines:(NV.pcIn?[{x:NV.pc,color:C.crit,dash:[4,4],label:'p_c'}]:[]).concat([{x:NV.p,color:C.ink,width:1}]),xlabel: er?'p, connection probability':'p, fraction of links kept',ylabel:'S'});
   $('gFill').style.width=(100*S).toFixed(1)+'%';
   $('gTxt').textContent=`${(100*S).toFixed(1)}% of nodes (${NV.size[NV.mr]} of ${NV.g.N})`;
 }
@@ -812,20 +843,20 @@ document.querySelectorAll('input[name=cm]').forEach(r=>r.onchange=e=>{ NV.mode=e
   cv.addEventListener('pointermove',e=>{ if (drag) at(e); });
   cv.addEventListener('pointerup',()=>{ drag=false; });
 })();
-$('toPc').onclick=()=>setP(NV.pc);
-$('newNet').onclick=()=>{ NV.seed++; buildView(); };
-document.querySelectorAll('input[name=nt]').forEach(r=>r.onchange=e=>{ NV.type=e.target.value; NV.p = NV.type==='gnp' ? 1.5/(NV.N-1) : 0.35; $('fK').hidden=NV.type!=='er'; $('fG').hidden=NV.type!=='sf'; $('fM').hidden=NV.type!=='sf'; buildView(); });
-$('vG').onchange=e=>{ NV.gamma=+e.target.value; buildView(); };
-$('vM').onchange=e=>{ NV.kmin=+e.target.value; buildView(); };
-$('vN').onchange=e=>{ NV.N=+e.target.value; buildView(); };
-$('vK').onchange=e=>{ NV.k=+e.target.value; buildView(); };
-$('logP').onchange=e=>{ NV.logp=e.target.checked; $('pcMark').style.left=(p2t(NV.pc)/10).toFixed(2)+'%'; updateView(); };
+$('toPc').onclick=()=>{ if (NV.pcIn) setP(NV.pc); };
+$('newNet').onclick=()=>{ NV.seed++; scheduleBuild(); };
+document.querySelectorAll('input[name=nt]').forEach(r=>r.onchange=e=>{ NV.type=e.target.value; NV.p = NV.type==='gnp' ? 1.5/(NV.N-1) : 0.35; $('fK').hidden=NV.type!=='er'; $('fG').hidden=NV.type!=='sf'; $('fM').hidden=NV.type!=='sf'; scheduleBuild(); });
+$('vG').onchange=e=>{ NV.gamma=+e.target.value; scheduleBuild(); };
+$('vM').onchange=e=>{ NV.kmin=+e.target.value; scheduleBuild(); };
+$('vN').onchange=e=>{ NV.N=+e.target.value; scheduleBuild(); };
+$('vK').onchange=e=>{ NV.k=+e.target.value; scheduleBuild(); };
+$('logP').onchange=e=>{ NV.logp=e.target.checked; placePcMark(); updateView(); };
 $('showRem').onchange=e=>{ NV.showRem=e.target.checked; renderNet(); };
 $('outbreak').onclick=startOutbreak;
 $('run').onclick=()=>{ if (running){ running=false; $('run').textContent='Resume'; status(); } else start(); };
 $('more').onclick=()=>{ tMul*=2; start(); };
-$('restart').onclick=()=>{ erS.forEach(s=>{ s.cnt=0; s.S.fill(0); s.chi.fill(0); s.smax1=0; s.logSmax1=0; s.hist.fill(0); }); tMul=1; makeBond(); job=null; refresh(); start(); };
-$('sRun').onclick=()=>{ SFG=+$('sG').value; SFM=+$('sM').value; makeBond(); job=null; refresh(); start(); };
+$('restart').onclick=()=>{ erGen++; erS.forEach(s=>{ s.cnt=0; s.S.fill(0); s.chi.fill(0); s.smax1=0; s.logSmax1=0; s.hist.fill(0); }); tMul=1; makeBond(); job=null; refresh(); start(); };
+$('sRun').onclick=()=>{ SFG=+$('sG').value; SFM=+$('sM').value; makeBond(); if (job && jobSt.kind==='bond') job=null; refresh(); start(); };
 let rz=0;
 const ro=new ResizeObserver(()=>{ if (rz) return; rz=requestAnimationFrame(()=>{ rz=0; renderNet(); drawCurve(); drawAll(); }); });
 document.querySelectorAll('figure, .plate').forEach(el=>ro.observe(el));
