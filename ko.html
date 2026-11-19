@@ -1,0 +1,905 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<!-- lang-link:head -->
+<script>(function(){var p=null;try{p=localStorage.getItem("lshlj82-demo-lang")}catch(e){}if(p&&p!=="ko"&&!/[?&]stay\b/.test(location.search))location.replace("index.html"+location.hash);})();</script>
+<style>
+#langBtn{position:fixed;z-index:21;top:calc(env(safe-area-inset-top,0px) + 12px);right:calc(env(safe-area-inset-right,0px) + 60px);min-width:40px;height:40px;padding:0 10px;border-radius:20px;display:grid;place-items:center;cursor:pointer;text-decoration:none;font:600 14px/1 system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif;background:var(--lb-bg,rgba(255,255,255,.92));color:var(--lb-fg,#1d2633);border:1px solid var(--lb-bd,rgba(20,30,45,.18));box-shadow:0 1px 4px rgba(0,0,0,.12)}
+#langBtn:hover{border-color:currentColor}
+#langBtn:focus-visible{outline:2px solid #3b82f6;outline-offset:2px}
+:root[data-theme="dark"] #langBtn{--lb-bg:rgba(22,28,38,.92);--lb-fg:#e8eef6;--lb-bd:rgba(255,255,255,.18)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) #langBtn{--lb-bg:rgba(22,28,38,.92);--lb-fg:#e8eef6;--lb-bd:rgba(255,255,255,.18)}}
+@media print{#langBtn{display:none}}
+html[lang="ko"] body{word-break:keep-all;overflow-wrap:break-word}
+</style>
+<!-- lang-link:head-end -->
+
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>네트워크 위의 스며들기 · Percolation on networks | 네트워크 과학 데모</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+
+:root{
+  --paper:#EEF2F6; --panel:#FFFFFF; --ink:#15243A; --muted:#566779; --rule:#CBD5E0; --grid:#E3E9F0;
+  --accent:#1F4FD1; --crit:#B4235A;
+  --l16:#E69F00; --l32:#56B4E9; --l64:#009E73; --l128:#CC79A7; --l256:#0B5FA5;
+  --serif:"IBM Plex Sans KR", Georgia, "Times New Roman", serif;
+  --sans:"IBM Plex Sans KR", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0E1924; --panel:#142232; --ink:#E2E9F1; --muted:#93A4B8; --rule:#2B3D52; --grid:#1B2B3D;
+    --accent:#7A9DFF; --crit:#FF6F9C;
+    --l16:#F0B43C; --l32:#6CC3F2; --l64:#2FC596; --l128:#E08FC1; --l256:#8FB8FF;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0E1924; --panel:#142232; --ink:#E2E9F1; --muted:#93A4B8; --rule:#2B3D52; --grid:#1B2B3D;
+  --accent:#7A9DFF; --crit:#FF6F9C;
+  --l16:#F0B43C; --l32:#6CC3F2; --l64:#2FC596; --l128:#E08FC1; --l256:#8FB8FF;
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{
+  margin:0; color:var(--ink); font-family:var(--sans); font-size:15px; line-height:1.5;
+  background-color:var(--paper);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:24px 24px;
+  font-variant-numeric:tabular-nums;
+}
+.wrap{max-width:1180px; margin:0 auto; padding:28px 20px 60px}
+h1,h2,h3{font-family:var(--serif); font-weight:600; line-height:1.15; margin:0}
+h1{font-size:clamp(30px,4.6vw,48px); letter-spacing:-0.01em}
+h2{font-size:clamp(22px,2.8vw,30px); margin-bottom:8px}
+p{margin:0 0 10px}
+.lede{font-family:var(--serif); font-size:18px; line-height:1.55; max-width:68ch; margin-top:12px; color:var(--ink)}
+.prose{max-width:72ch; font-family:var(--serif); font-size:16.5px; line-height:1.6}
+section{margin-top:44px}
+sub{font-size:.72em}
+.hero{display:grid; grid-template-columns:minmax(0,1.25fr) minmax(290px,1fr); gap:28px; margin-top:26px; align-items:start}
+@media (max-width:860px){.hero{grid-template-columns:1fr}}
+.plate{background:var(--panel); border:2px solid var(--ink); padding:10px; border-radius:3px}
+#lat{width:100%; aspect-ratio:1/1; display:block; image-rendering:pixelated}
+.plate-note{font-size:13px; color:var(--muted); margin-top:8px}
+.controls{display:flex; flex-direction:column; gap:14px}
+.pbig{font-family:var(--serif); font-size:clamp(40px,6vw,64px); line-height:1; font-weight:600; letter-spacing:-0.02em}
+.pbig span{font-style:italic; font-weight:400}
+.slider-wrap{position:relative; padding-bottom:18px}
+input[type=range]{width:100%; accent-color:var(--accent); margin:0}
+.pcmark{position:absolute; top:22px; transform:translateX(-50%); font-size:12px; color:var(--crit); white-space:nowrap}
+.pcmark::before{content:""; position:absolute; left:50%; top:-6px; width:1px; height:6px; background:var(--crit)}
+.row{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+button,select{font:inherit; font-size:14px; color:var(--ink); background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:6px 11px; cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:disabled{opacity:.45; cursor:not-allowed; border-color:var(--rule)}
+button.primary{background:var(--ink); color:var(--panel); border-color:var(--ink)}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+fieldset{border:0; padding:0; margin:0}
+legend{font-size:13px; color:var(--muted); margin-bottom:4px}
+.seg{display:inline-flex; border:1px solid var(--rule); border-radius:5px; overflow:hidden; background:var(--panel)}
+.seg label{padding:6px 11px; font-size:14px; cursor:pointer}
+.seg input{position:absolute; opacity:0; pointer-events:none}
+.seg input:checked + span{font-weight:600; color:var(--accent)}
+.seg input:focus-visible + span{outline:2px solid var(--accent); outline-offset:2px}
+.field label.lab{font-size:13px; color:var(--muted); display:block; margin-bottom:4px}
+dl.readouts{display:grid; grid-template-columns:auto 1fr; gap:6px 16px; margin:0; padding:12px 14px; background:var(--panel); border:1px solid var(--rule); border-radius:5px}
+dl.readouts dt{color:var(--muted); font-size:14px}
+dl.readouts dd{margin:0; font-weight:600; text-align:right}
+.status{display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin:12px 0 4px; font-size:13.5px}
+.chip{display:inline-flex; align-items:center; gap:6px}
+.sw{width:18px; height:3px; border-radius:2px; display:inline-block}
+.bar{height:4px; background:var(--grid); border-radius:2px; overflow:hidden; flex:1 1 160px; max-width:260px}
+.bar i{display:block; height:100%; width:0; background:var(--accent)}
+.figs{display:grid; grid-template-columns:repeat(auto-fill,minmax(320px,1fr)); gap:16px; margin-top:14px}
+figure{margin:0; background:var(--panel); border:1px solid var(--rule); border-radius:5px; padding:12px 12px 10px}
+figcaption{font-size:13.5px; color:var(--muted); margin-bottom:6px}
+figcaption b{color:var(--ink); font-weight:600; font-size:14.5px; display:block}
+figure canvas{width:100%; height:240px; display:block}
+figure.sq canvas{height:auto; aspect-ratio:1/1}
+figure.wide{grid-column:1 / -1}
+.stages{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px}
+@media (max-width:700px){.stages{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}}
+.stages canvas{width:100%; height:auto; aspect-ratio:1/1; display:block; border:1px solid var(--rule)}
+.stlab{display:block; font-size:12.5px; color:var(--muted); margin-top:4px}
+.fit{font-size:13.5px; margin:6px 0 0; min-height:1.4em}
+.clickable canvas{cursor:crosshair}
+.tbl{overflow-x:auto; margin-top:14px; background:var(--panel); border:1px solid var(--rule); border-radius:5px}
+table{border-collapse:collapse; width:100%; font-size:14px; min-width:640px}
+th,td{padding:8px 12px; text-align:left; border-bottom:1px solid var(--grid); vertical-align:top}
+th{font-weight:600; color:var(--muted); font-size:13px}
+td.num{text-align:right; white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.good{color:var(--l64)} .warn{color:var(--crit)}
+.two{display:grid; grid-template-columns:minmax(0,1.4fr) minmax(260px,1fr); gap:20px; margin-top:14px; align-items:start}
+@media (max-width:860px){.two{grid-template-columns:1fr}}
+.two figure canvas{height:340px}
+.sl{display:grid; grid-template-columns:1fr auto; gap:2px 10px; align-items:center; margin-bottom:12px}
+.sl label{font-size:14px}
+.sl output{font-weight:600}
+.sl input{grid-column:1 / -1}
+.note{font-size:13px; color:var(--muted); max-width:80ch}
+.keyref{border-left:4px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 5px 5px 0; margin:12px 0 16px; max-width:80ch}
+ol.refs{max-width:80ch; padding-left:1.4em; font-size:14.5px; line-height:1.55}
+ol.refs li{margin-bottom:8px}
+footer{margin-top:48px; font-size:13px; color:var(--muted); max-width:80ch}
+
+#net{width:100%; aspect-ratio:1/1; display:block}
+.chk{font-size:14px; display:flex; gap:8px; align-items:center}
+.keyref{border-left:4px solid var(--accent); background:var(--panel); padding:12px 16px; border-radius:0 5px 5px 0; margin:12px 0 16px; max-width:80ch}
+ol.refs{max-width:80ch; padding-left:1.4em; font-size:14.5px; line-height:1.55}
+ol.refs li{margin-bottom:8px}
+[hidden]{display:none !important}
+.glab{display:flex; justify-content:space-between; font-size:14px; margin-bottom:4px}
+.glab span:first-child{color:var(--muted)} #gTxt{font-weight:600; color:var(--accent)}
+.gbar{position:relative; height:14px; background:var(--grid); border-radius:7px; overflow:hidden; border:1px solid var(--rule)}
+.gpc{position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--crit); transform:translateX(-1px)}
+#gFill{position:absolute; left:0; top:0; bottom:0; width:0; background:var(--accent)}
+.curve-cap{font-size:13.5px; color:var(--muted); margin:0 0 6px} .curve-cap b{color:var(--ink); display:block; font-size:14.5px}
+
+.rad{white-space:nowrap}
+.rad .rs{display:inline-block; transform:scale(1.05,1.22); transform-origin:100% 85%; margin-right:-0.05em}
+.rad .rc{display:inline-block; border-top:0.075em solid currentColor; padding:0.04em 0.12em 0 0.1em; line-height:1.1}
+.ss{display:inline-flex; flex-direction:column; vertical-align:0.5em; line-height:1; font-size:0.72em; margin-left:0.04em; margin-right:0.04em}
+.ss sup,.ss sub{font-size:1em; vertical-align:baseline; line-height:1.02; position:static}
+</style>
+<script>try { const t = localStorage.getItem("netsci-theme"); if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+button.theme-btn{position:fixed; z-index:20; top:calc(env(safe-area-inset-top, 0px) + 12px); right:calc(env(safe-area-inset-right, 0px) + 12px);
+  width:40px; height:40px; padding:0; border-radius:50%; display:grid; place-items:center; cursor:pointer;
+  background:var(--panel); color:var(--ink); border:1px solid var(--rule); box-shadow:0 1px 4px rgba(0,0,0,.12)}
+button.theme-btn:hover{background:var(--panel); color:var(--ink); border-color:var(--ink)}
+button.theme-btn:focus-visible{outline:3px solid var(--accent); outline-offset:2px}
+button.theme-btn svg{width:20px; height:20px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=STIX+Two+Text:wght@600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+<style>
+/* Course-wide demo title: the same on every demo page and on the course landing page */
+h1.course-title{font-family:"STIX Two Text","Noto Serif KR",Cambria,"Times New Roman",serif !important;font-weight:600 !important;font-style:normal !important;font-size:clamp(30px,3.6vw,44px) !important;line-height:1.08 !important;letter-spacing:-.01em !important;text-transform:none !important;color:var(--ink) !important;word-break:keep-all}
+h1.course-title .course-title-ko{display:block;font-family:"Noto Serif KR","STIX Two Text",serif;font-weight:400;font-size:.5em;line-height:1.3;letter-spacing:0;color:var(--muted);margin:.3em 0 0}
+/* space above the title, so it starts about 48px (phones: 32px) below the top of the page */
+h1.course-title{margin-top:20px !important}
+@media (max-width:700px){h1.course-title{margin-top:4px !important}}
+</style>
+</head>
+<body>
+<!-- lang-link:body -->
+<a id="langBtn" href="index.html" hreflang="en" lang="en" aria-label="View in English" title="View in English">EN</a>
+<script>document.getElementById("langBtn").addEventListener("click",function(){try{localStorage.setItem("lshlj82-demo-lang","en")}catch(e){}});</script>
+<!-- lang-link:body-end -->
+<button id="themeBtn" class="theme-btn" type="button" aria-label="Switch to light mode"></button>
+<div class="wrap">
+
+<header>
+  <h1 class="course-title">네트워크 위의 스며들기<span class="course-title-ko" lang="en">Percolation on networks</span></h1>
+  <p class="lede">모든 노드가 링크로 이어진 경로를 따라 다른 모든 노드에 닿을 수 있으면 네트워크가 연결되어 있다고 합니다. 링크가 적으면 네트워크는 서로 떨어진 연결 덩어리들로 쪼개지고, 링크를 더해 임계점을 넘으면 거대 덩어리 하나가 갑자기 전체 노드의 유한한 비율을 차지합니다. 이것이 스며들기 상전이입니다. 에르되시–레니 무작위 그래프에서는 문턱이 날카롭습니다. p(k) ∝ k<sup>−γ</sup>, 2 &lt; γ &lt; 3인 척도 없는 네트워크에서는 연결선수의 평균은 유한하지만 분산이 무한하며, 허브 때문에 문턱이 사라져 전염병이 언제나 퍼질 수 있습니다.</p>
+  <p class="note" style="margin-top:6px">입문 네트워크 과학 강의를 위한 이상훈 교수의 강의 슬라이드를 바탕으로 합니다. <a href="#references" style="color:var(--accent)">참고문헌</a></p>
+</header>
+
+<div class="hero">
+  <div>
+    <div class="plate"><canvas id="net" aria-label="네트워크와 그 덩어리들"></canvas></div>
+    <p class="plate-note" id="netNote"></p>
+    <div class="plate" style="margin-top:14px; border-width:1px; padding:12px">
+      <p class="curve-cap"><b>p에 따른 이 네트워크의 가장 큰 덩어리</b> 파랑: 이 네트워크의 정확한 값입니다. 링크마다 자기 난수를 계속 가지고 있기 때문입니다. 점선: 연결선수가 같은 무한히 큰 네트워크에 대한 이론. 그래프를 클릭하거나 끌어서 p를 정하세요.</p>
+      <canvas id="netS" style="width:100%; height:220px; display:block; cursor:crosshair; touch-action:none" aria-label="p에 따른 가장 큰 덩어리"></canvas>
+    </div>
+  </div>
+  <div class="controls">
+    <fieldset>
+      <legend><span>네트워크</span></legend>
+      <div class="seg">
+        <label><input type="radio" name="nt" value="gnp" checked><span><span>에르되시–레니 G(N, p)</span></span></label>
+        <label><input type="radio" name="nt" value="er"><span><span>에르되시–레니, ⟨k⟩ 고정</span></span></label>
+        <label><input type="radio" name="nt" value="sf"><span><span>척도 없음</span></span></label>
+      </div>
+    </fieldset>
+    <div class="row" style="gap:16px">
+      <div class="field" id="fK" hidden><label class="lab" for="vK">평균 연결선수 ⟨k⟩</label><select id="vK"><option>2</option><option>3</option><option selected>4</option><option>6</option></select></div>
+      <div class="field" id="fG" hidden><label class="lab" for="vG">연결선수 지수 γ</label><select id="vG"><option>2.2</option><option selected>2.5</option><option>2.8</option><option>3.5</option></select></div>
+      <div class="field" id="fM" hidden><label class="lab" for="vM">최소 연결선수</label><select id="vM"><option>1</option><option selected>2</option><option>3</option></select></div>
+      <div class="field"><label class="lab" for="vN">노드 수</label><select id="vN"><option>200</option><option selected>300</option><option>500</option></select></div>
+    </div>
+    <div class="pbig"><span>p</span> = <output id="pOut"></output></div>
+    <div class="slider-wrap">
+      <input type="range" id="p" min="0" max="1000" step="1" aria-label="p">
+      <div class="pcmark" id="pcMark">p<sub>c</sub></div>
+    </div>
+    <p class="note" style="margin-top:-8px" id="pNote"></p>
+    <div class="row">
+      <button id="play" class="primary">Scan through p</button>
+      <select id="speed" aria-label="훑기 속도"><option value="20000"><span>천천히</span></option><option value="10000" selected><span>보통 속도로</span></option><option value="5000"><span>빠르게</span></option></select>
+      <button id="toPc">p<sub>c</sub>로 이동</button>
+      <button id="newNet">새 네트워크</button>
+    </div>
+    <div class="row">
+      <button id="outbreak">감염 확산 시작</button>
+      <select id="seedSel" aria-label="감염 확산의 시작점"><option value="rand"><span>무작위 노드에서</span></option><option value="hub"><span>가장 큰 허브에서</span></option></select>
+    </div>
+    <div><div class="glab"><span>가장 큰 덩어리</span><span id="gTxt"></span></div><div class="gbar" aria-hidden="true"><div id="gFill"></div></div></div>
+    <fieldset>
+      <legend><span>색칠</span></legend>
+      <div class="seg">
+        <label><input type="radio" name="cm" value="big" checked><span><span>가장 큰 덩어리 강조</span></span></label>
+        <label><input type="radio" name="cm" value="all"><span><span>모든 덩어리</span></span></label>
+      </div>
+    </fieldset>
+    <label class="chk" id="logWrap"><input type="checkbox" id="logP" checked> <span>p를 로그 눈금으로 (문턱 1/(N − 1)은 p = 0 가까이에 있음)</span></label>
+    <label class="chk" id="remWrap"><input type="checkbox" id="showRem"> <span>없앤 링크를 흐리게 보이기</span></label>
+    <dl class="readouts">
+      <dt id="lKept">Links kept</dt><dd id="rKept">–</dd>
+      <dt>남긴 네트워크의 평균 연결선수</dt><dd id="rKm">–</dd>
+      <dt>밀도 d = 2M / N(N − 1)</dt><dd id="rDen">–</dd>
+      <dt>S, 가장 큰 덩어리에 속한 노드의 비율</dt><dd id="rS">–</dd>
+      <dt>두 번째로 큰 덩어리</dt><dd id="rS2">–</dd>
+      <dt>덩어리 개수</dt><dd id="rNc">–</dd>
+      <dt>⟨s⟩, 나머지 덩어리의 평균 크기</dt><dd id="rChi">–</dd>
+      <dt id="lPc">p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩) for this network</dt><dd id="rPc">–</dd>
+      <dt>감염 확산</dt><dd id="rOut">not started</dd>
+    </dl>
+  </div>
+</div>
+
+<section>
+  <h2>밀도와 거대 덩어리</h2>
+  <p class="prose">에르되시–레니 그래프에서는 N개 노드의 모든 쌍이 같은 확률로 연결되므로, 밀도 d = 2M / N(N − 1)과 평균 연결선수 ⟨k⟩ = d(N − 1)은 같은 정보를 담습니다. 거대 덩어리는 ⟨k⟩ = 1에서 나타나는데, 이는 임계 밀도 d<sub>c</sub> = 1/(N − 1)이 네트워크가 커질수록 줄어든다는 뜻입니다. 그래서 아래 곡선은 ⟨k⟩를 씁니다. 링크를 무작위 순서로 하나씩 더하므로 한 번의 실행으로 곡선 전체를 그리며, 다섯 가지 네트워크 크기에 대해 실행을 평균합니다. 문턱 위에서 거대 덩어리의 비율은 S = 1 − e<sup>−⟨k⟩S</sup>의 해이고, 나머지 덩어리의 평균 크기는 ⟨s⟩ = 1 / (1 − ⟨k⟩ + ⟨k⟩S)입니다.</p>
+  <div class="status">
+    <span id="chipsE" class="row" style="gap:14px"></span>
+    <span class="bar" aria-hidden="true"><i id="progE"></i></span>
+    <span id="stTxt"></span>
+    <button id="run">Pause</button>
+    <button id="more">표본 더 추가</button>
+    <button id="restart">처음부터</button>
+  </div>
+  <div class="figs">
+    <figure><figcaption><b>⟨k⟩에 따른 거대 덩어리 S</b>색: 시뮬레이션. 점선: S = 1 − e<sup>−⟨k⟩S</sup>. N이 커질수록 계단이 날카로워집니다.</figcaption><canvas id="e1"></canvas></figure>
+    <figure><figcaption><b>나머지 덩어리의 평균 크기 ⟨s⟩</b>N → ∞에서 감수율처럼 ⟨k⟩ = 1에서 발산합니다. 점선: 1 / (1 − ⟨k⟩ + ⟨k⟩S).</figcaption><canvas id="e2"></canvas></figure>
+    <figure><figcaption><b>문턱 위에서 S ∝ (⟨k⟩ − 1)<sup>β</sup></b>로그–로그. 점선: 이론 S = 1 − e<sup>−⟨k⟩S</sup>. 점선(가는): 기울기 β = 1.</figcaption><canvas id="e3"></canvas><p class="fit" id="t3"></p></figure>
+    <figure><figcaption><b>문턱 아래에서 ⟨s⟩ ∝ (1 − ⟨k⟩)<sup>−γ<sub>p</sub></sup></b>로그–로그. 점선: 이론 ⟨s⟩ = 1/(1 − ⟨k⟩), 기울기 −γ<sub>p</sub> = −1. (γ<sub>p</sub>는 연결선수 지수가 아니라 스며들기 지수입니다.)</figcaption><canvas id="e4"></canvas><p class="fit" id="t4"></p></figure>
+    <figure><figcaption><b>⟨k⟩ = 1에서 가장 큰 덩어리: S<sub>max</sub> ∝ N<sup>2/3</sup></b>문턱에서 가장 큰 덩어리는 크지만 거대하지는 않습니다.</figcaption><canvas id="e5"></canvas><p class="fit" id="t5"></p></figure>
+    <figure><figcaption><b>⟨k⟩ = 1에서 덩어리 크기: n<sub>s</sub> ∝ s<sup>−τ</sup></b>노드당 크기 s인 덩어리 수, 로그 구간, N = 100 000. 점선: τ = 5/2.</figcaption><canvas id="e6"></canvas><p class="fit" id="t6"></p></figure>
+  </div>
+  <div class="tbl"><table id="erTable" aria-label="에르되시–레니 상전이의 임계 지수"></table></div>
+  <p class="note" style="margin-top:10px">이는 스며들기의 평균장 지수로, 베테 격자와 상임계 차원 d = 6보다 높은 차원의 격자에서와 같습니다. 거기서 막 생겨나는 덩어리의 프랙털 차원은 D = 4이므로, 그 질량은 L<sup>4</sup> = N<sup>4/6</sup> = N<sup>2/3</sup>처럼 커집니다.</p>
+</section>
+
+<section>
+  <h2>무작위 네트워크 대 척도 없는 네트워크</h2>
+  <p class="prose">이제 네트워크 전체를 놓고 각 링크를 확률 p로 남깁니다. 척도 없는 네트워크는 배치 모형으로 만듭니다: 각 노드가 p(k) ∝ k<sup>−γ</sup>에서 연결선수를 뽑고, 링크 끝을 무작위로 짝짓습니다(자기 고리와 중복 링크는 버립니다). 에르되시–레니 네트워크는 크기가 같은 척도 없는 네트워크와 같은 평균 연결선수를 가지게 합니다. 무작위로 연결된 어떤 네트워크에서든 거대 덩어리는 p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩)에서 나타나는데, 이것이 몰로이–리드 판정 조건입니다. 에르되시–레니 그래프에서는 ⟨k²⟩ − ⟨k⟩ = ⟨k⟩²이므로 크기와 상관없이 p<sub>c</sub> = 1/⟨k⟩입니다. 2 &lt; γ &lt; 3이면 평균은 유한하지만 ⟨k²⟩는 가장 큰 허브와 함께 커지므로, N → ∞에서 p<sub>c</sub> → 0입니다.</p>
+  <div class="row" style="gap:16px; margin-top:10px; align-items:flex-end">
+    <div class="field"><label class="lab" for="sG">연결선수 지수 γ</label><select id="sG"><option>2.2</option><option selected>2.5</option><option>2.8</option><option>3.5</option></select></div>
+    <div class="field"><label class="lab" for="sM">최소 연결선수</label><select id="sM"><option>1</option><option selected>2</option><option>3</option></select></div>
+    <button id="sRun">이 설정으로 실행</button>
+  </div>
+  <div class="status">
+    <span id="chipsB" class="row" style="gap:14px"></span>
+    <span class="bar" aria-hidden="true"><i id="progB"></i></span>
+  </div>
+  <div class="figs">
+    <figure><figcaption><b>연결선수 분포 p(k)</b>로그 구간, N = 100 000. 빨강: 척도 없음, 점선 기울기 −γ. 진한 색: 에르되시–레니로, 푸아송 분포이며 허브가 없습니다.</figcaption><canvas id="b1"></canvas></figure>
+    <figure><figcaption><b>에르되시–레니: p에 따른 거대 덩어리</b>p<sub>c</sub> = 1/⟨k⟩(세로 점선)까지는 아무것도 퍼지지 않다가, 그다음 거대 덩어리가 갑자기 자랍니다. 점선 곡선: N = 100 000에 대한 생성 함수 이론.</figcaption><canvas id="b2"></canvas></figure>
+    <figure><figcaption><b>척도 없음: p에 따른 거대 덩어리</b>N이 커질수록 문턱이 0을 향해 옮겨 가고, 곡선이 거의 p = 0에서부터 올라갑니다: 무한한 네트워크에는 임계점이 없습니다.</figcaption><canvas id="b3"></canvas></figure>
+    <figure><figcaption><b>p에 따른 나머지 덩어리의 평균 크기 ⟨s⟩</b>실선: 척도 없음. 점선: 에르되시–레니. 봉우리가 유한 크기 문턱을 표시합니다.</figcaption><canvas id="b4"></canvas></figure>
+    <figure><figcaption><b>네트워크 크기에 따른 문턱</b>선: 시뮬레이션한 연결선수로 구한 p<sub>c</sub> = ⟨k⟩/(⟨k²⟩ − ⟨k⟩). 점: ⟨s⟩의 봉우리. 척도 없는 네트워크의 문턱은 계속 내려갑니다.</figcaption><canvas id="b5"></canvas></figure>
+  </div>
+  <div class="tbl"><table id="momTable" aria-label="연결선수 모멘트와 문턱"></table></div>
+  <p class="note" style="margin-top:10px">⟨k⟩/(⟨k²⟩ − ⟨k⟩)가 1보다 크면(예를 들어 최소 연결선수 1에서 γ = 3.5), 모든 링크를 남긴 네트워크 전체조차 몰로이–리드 문턱 아래에 있습니다: 0 ≤ p ≤ 1에 임계점이 없고, ⟨s⟩는 봉우리를 이루지 않고 p = 1까지 계속 커집니다.</p>
+</section>
+
+<section>
+  <h2>전염병과 사라지는 문턱</h2>
+  <p class="prose">감염된 사람이 접촉한 사람 각각에게 확률 T로 병을 옮기고 회복하는 확산은 p = T인 결합 스며들기입니다: 최종 확산 규모는 병을 옮긴 링크들로 이루어진 네트워크에서 첫 환자가 속한 덩어리입니다. 페이지 맨 위의 “감염 확산 시작”을 눌러 그 결과를 그 노드가 속한 덩어리와 비교해 보세요. 무작위 네트워크에서는 T<sub>c</sub> = 1/⟨k⟩ 아래에서는 아무것도 퍼지지 않다가, 그것을 넘으면 갑자기 전염병이 가능해집니다. 척도 없는 네트워크에서는 허브가 슈퍼 전파 사건처럼 T<sub>c</sub>를 0 가까이에 묶어 두므로, 드물게 옮는 병도 인구의 유한한 비율에 닿을 수 있습니다. 이때 전염병의 규모는 0에서부터 아주 천천히 커지는데, 이것이 강의의 아래로 볼록한 빨간 곡선입니다.</p>
+  <div class="tbl"><table id="sfTable" aria-label="문턱과 거대 덩어리 지수"></table></div>
+  <p class="note" style="margin-top:10px">문턱 근처에서 거대 덩어리는 S ∝ (p − p<sub>c</sub>)<sup>β</sup>처럼 자랍니다. 척도 없는 네트워크의 값은 Cohen, ben-Avraham, Havlin의 생성 함수 분석에서 나옵니다.</p>
+</section>
+
+<section id="references">
+  <h2>참고문헌</h2>
+  <ol class="refs">
+    <li>P. Erdős and A. Rényi, “On the evolution of random graphs,” <i>Publ. Math. Inst. Hung. Acad. Sci.</i> <b>5</b>, 17 (1960).</li>
+    <li>A.-L. Barabási and R. Albert, “Emergence of scaling in random networks,” <i>Science</i> <b>286</b>, 509 (1999).</li>
+    <li>M. Molloy and B. Reed, “A critical point for random graphs with a given degree sequence,” <i>Random Struct. Algorithms</i> <b>6</b>, 161 (1995).</li>
+    <li>M. E. J. Newman, S. H. Strogatz and D. J. Watts, “Random graphs with arbitrary degree distributions and their applications,” <i>Phys. Rev. E</i> <b>64</b>, 026118 (2001). 이론 곡선에 쓴 생성 함수.</li>
+    <li>D. S. Callaway, M. E. J. Newman, S. H. Strogatz and D. J. Watts, “Network robustness and fragility: Percolation on random graphs,” <i>Phys. Rev. Lett.</i> <b>85</b>, 5468 (2000).</li>
+    <li>R. Cohen, K. Erez, D. ben-Avraham and S. Havlin, “Resilience of the Internet to random breakdowns,” <i>Phys. Rev. Lett.</i> <b>85</b>, 4626 (2000).</li>
+    <li>R. Cohen, D. ben-Avraham and S. Havlin, “Percolation critical exponents in scale-free networks,” <i>Phys. Rev. E</i> <b>66</b>, 036113 (2002).</li>
+    <li>M. E. J. Newman, “Spread of epidemic disease on networks,” <i>Phys. Rev. E</i> <b>66</b>, 016128 (2002). 결합 스며들기로서의 감염 확산.</li>
+    <li>R. Pastor-Satorras and A. Vespignani, “Epidemic spreading in scale-free networks,” <i>Phys. Rev. Lett.</i> <b>86</b>, 3200 (2001).</li>
+    <li>M. E. J. Newman and R. M. Ziff, “Efficient Monte Carlo algorithm and high-precision results for percolation,” <i>Phys. Rev. Lett.</i> <b>85</b>, 4104 (2000). 링크를 하나씩 더해 한 번의 실행으로 곡선 전체를 그리는 방법.</li>
+    <li>A.-L. Barabási, <i>Network Science</i>, Cambridge University Press (2016).</li>
+    <li>M. E. J. Newman, <i>Networks</i>, 2nd ed., Oxford University Press (2018).</li>
+  </ol>
+</section>
+
+<footer>
+  <span>덩어리는 합집합–찾기(union–find)로 찾습니다. 크기는 N = 1 000에서 100 000까지이며, 표본이 많을수록 평균이 나아지고 가장 작은 네트워크에서 유한 크기 효과가 가장 강하게 나타납니다.</span>
+  <p style="margin-top:14px">이상훈 교수의 강의 슬라이드를 바탕으로 Claude Opus 5.5가 만들었습니다.</p>
+</footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const C = {};
+function readColors(){
+  const cs=getComputedStyle(document.documentElement);
+  ['paper','panel','ink','muted','rule','grid','accent','crit','l16','l32','l64','l128','l256'].forEach(k=>C[k]=cs.getPropertyValue('--'+k).trim());
+}
+function hexRgb(h){ h=h.replace('#',''); if (h.length===3) h=h.split('').map(c=>c+c).join(''); const v=parseInt(h,16); return [(v>>16)&255,(v>>8)&255,v&255]; }
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+const f3=(v,d=3)=>isFinite(v)?v.toFixed(d):'–';
+const fmtN=v=>v>=1000?(v/1000)+'k':String(v);
+const NCOL=N=>({1000:C.l16,3000:C.l32,10000:C.l64,30000:C.l128,100000:C.l256})[N];
+function linReg(xs,ys){
+  const n=xs.length; if (n<2) return null;
+  let mx=0,my=0; for (let i=0;i<n;i++){mx+=xs[i];my+=ys[i];} mx/=n; my/=n;
+  let sxx=0,sxy=0; for (let i=0;i<n;i++){ sxx+=(xs[i]-mx)**2; sxy+=(xs[i]-mx)*(ys[i]-my); }
+  const slope=sxy/sxx, icpt=my-slope*mx;
+  let se=NaN; if (n>2){ let r=0; for (let i=0;i<n;i++) r+=(ys[i]-icpt-slope*xs[i])**2; se=Math.sqrt(r/(n-2)/sxx); }
+  return {slope,icpt,se};
+}
+
+function richParts(s){ const out=[]; let i=0, buf=''; const push=(t,m)=>{ if (t) out.push({t,m}); };
+  while (i<s.length){ const ch=s[i];
+    if ((ch==='_'||ch==='^') && i+1<s.length){ push(buf,0); buf=''; const m=ch==='_'?1:2; let t;
+      if (s[i+1]==='{'){ const j=s.indexOf('}',i+2); t=s.slice(i+2,j<0?s.length:j); i=j<0?s.length:j+1; }
+      else { t=String.fromCodePoint(s.codePointAt(i+1)); i+=1+t.length; }
+      push(t,m); }
+    else { buf+=ch; i++; } }
+  push(buf,0); return out; }
+function drawRich(ctx,s,x,y){
+  const parts=richParts(String(s)); if (parts.length===1 && parts[0].m===0){ ctx.fillText(s,x,y); return; }
+  const font=ctx.font, mm=font.match(/(\d+(?:\.\d+)?)px/), px=mm?+mm[1]:11, small=font.replace(/(\d+(?:\.\d+)?)px/,(px*0.72).toFixed(1)+'px'), al=ctx.textAlign;
+  let w=0; parts.forEach(p=>{ ctx.font=p.m?small:font; p.w=ctx.measureText(p.t).width; w+=p.w; });
+  let x0= al==='center' ? x-w/2 : (al==='right'||al==='end') ? x-w : x;
+  ctx.textAlign='left';
+  parts.forEach(p=>{ ctx.font=p.m?small:font; ctx.fillText(p.t,x0,y+(p.m===1?px*0.32:p.m===2?-px*0.38:0)); x0+=p.w; });
+  ctx.textAlign=al; ctx.font=font; }
+/* ---------- plotting ---------- */
+const SUP={'-':'⁻','0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹'};
+const supNum = n => String(n).split('').map(c=>SUP[c]||c).join('');
+function niceStep(range,n){ const raw=range/n, p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p; return (f<1.5?1:f<3?2:f<7?5:10)*p; }
+function fmtTick(v,step){ const dec=Math.max(0,-Math.floor(Math.log10(step)+1e-9)); return (Math.abs(v)<step/2?0:v).toFixed(Math.min(dec,4)); }
+function plot(cv,o){
+  const dpr=window.devicePixelRatio||1, W=cv.clientWidth, H=cv.clientHeight; if (!W||!H) return;
+  const pw_=Math.round(W*dpr), ph_=Math.round(H*dpr); if (cv.width!==pw_||cv.height!==ph_){cv.width=pw_; cv.height=ph_;}
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,W,H);
+  const m={l:54,r:12,t:10,b:36}, pw=W-m.l-m.r, ph=H-m.t-m.b;
+  const fx=o.logx?Math.log10:v=>v, fy=o.logy?Math.log10:v=>v;
+  const series=o.series||[];
+  let [x0,x1]=o.x||[Infinity,-Infinity];
+  if (!o.x){ series.forEach(s=>s.pts.forEach(p=>{ if (isFinite(p[0])&&(!o.logx||p[0]>0)){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);} })); }
+  let y0=Infinity,y1=-Infinity;
+  if (o.y){ [y0,y1]=o.y; }
+  else {
+    series.forEach(s=>{ if (s.noScale) return; s.pts.forEach(p=>{ const y=p[1]; if (p[0]>=x0&&p[0]<=x1&&isFinite(y)&&(!o.logy||y>0)){y0=Math.min(y0,y);y1=Math.max(y1,y);} }); });
+    if (!isFinite(y0)){ y0=o.logy?0.1:0; y1=o.logy?10:1; }
+    if (o.logy){ y0/=1.3; y1*=1.3; } else { const pad=(y1-y0||1)*0.06; y0 = o.zeroY ? Math.min(0,y0) : y0-pad; y1+=pad; }
+  }
+  if (!isFinite(x0)||!isFinite(x1)){ x0=o.logx?1:0; x1=o.logx?10:1; }
+  if (x0===x1){x0-=1;x1+=1;}
+  const X0=fx(x0),X1=fx(x1),Y0=fy(y0),Y1=fy(y1);
+  const X=v=>m.l+(fx(v)-X0)/(X1-X0)*pw, Y=v=>m.t+ph-(fy(v)-Y0)/(Y1-Y0)*ph;
+  cv._inv = px => { const t=(px-m.l)/pw; const v=X0+t*(X1-X0); return o.logx?Math.pow(10,v):v; };
+  ctx.font='11px "IBM Plex Sans KR", system-ui, sans-serif'; ctx.lineWidth=1;
+  function ticks(lo,hi,log,custom){
+    if (custom) return custom.filter(v=>v>=lo*0.999&&v<=hi*1.001).map(v=>[v,(o.xfmt||String)(v)]);
+    if (log){
+      if (!(lo>0)||!isFinite(hi)) return [];
+      const a=Math.floor(Math.log10(lo)), b=Math.ceil(Math.log10(hi)), out=[];
+      if (b-a>40) return [];
+      const mults = (b-a)<=1 ? [1,1.5,2,3,5,7] : (b-a)<=2 ? [1,2,5] : [1];
+      const stepK = (b-a)>6 ? 2 : 1;
+      for (let k=a;k<=b;k+=1) if (((k%stepK)+stepK)%stepK===0) mults.forEach(mu=>{ const v=mu*Math.pow(10,k); if (v>=lo&&v<=hi) out.push([v, mu===1 ? (k>=0&&k<=3 ? String(Math.pow(10,k)) : '10'+supNum(k)) : (k>=0? String(v): String(+v.toPrecision(2)))]); });
+      return out;
+    }
+    const st=niceStep(hi-lo,5), out=[];
+    if (!(st>0)||!isFinite(lo)||!isFinite(hi)) return out;
+    for (let v=Math.ceil(lo/st)*st; v<=hi+st*1e-6; v+=st) out.push([v,fmtTick(v,st)]);
+    return out;
+  }
+  ctx.fillStyle=C.panel; ctx.fillRect(m.l,m.t,pw,ph);
+  ctx.strokeStyle=C.grid; ctx.fillStyle=C.muted;
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  ticks(x0,x1,o.logx,o.xticks).forEach(([v,l])=>{ const px=Math.round(X(v))+.5; ctx.beginPath(); ctx.moveTo(px,m.t); ctx.lineTo(px,m.t+ph); ctx.stroke(); ctx.fillText(l,px,m.t+ph+5); });
+  ctx.textAlign='right'; ctx.textBaseline='middle';
+  ticks(y0,y1,o.logy).forEach(([v,l])=>{ const py=Math.round(Y(v))+.5; ctx.beginPath(); ctx.moveTo(m.l,py); ctx.lineTo(m.l+pw,py); ctx.stroke(); ctx.fillText(l,m.l-6,py); });
+  ctx.strokeStyle=C.rule; ctx.strokeRect(m.l+.5,m.t+.5,pw-1,ph-1);
+  ctx.save(); ctx.beginPath(); ctx.rect(m.l,m.t,pw,ph); ctx.clip();
+  (o.vlines||[]).forEach(v=>{ if (v.x<x0||v.x>x1) return; ctx.strokeStyle=v.color; ctx.lineWidth=v.width||1; ctx.setLineDash(v.dash||[]); const px=X(v.x); ctx.beginPath(); ctx.moveTo(px,m.t); ctx.lineTo(px,m.t+ph); ctx.stroke(); ctx.setLineDash([]); if (v.label){ ctx.fillStyle=v.color; ctx.textAlign='left'; ctx.textBaseline='top'; drawRich(ctx,v.label,px+4,m.t+4); } });
+  series.forEach(s=>{
+    ctx.strokeStyle=s.color; ctx.fillStyle=s.color; ctx.lineWidth=s.width||1.6; ctx.setLineDash(s.dash||[]); ctx.globalAlpha=s.alpha||1;
+    if (s.dots){ s.pts.forEach(p=>{ if (!isFinite(p[1])||(o.logy&&p[1]<=0)) return; ctx.beginPath(); ctx.arc(X(p[0]),Y(p[1]),s.r||4,0,7); ctx.fill(); }); }
+    else { ctx.beginPath(); let pen=false; s.pts.forEach(p=>{ const ok=isFinite(p[1])&&isFinite(p[0])&&(!o.logy||p[1]>0)&&(!o.logx||p[0]>0); if (!ok){pen=false;return;} const px=X(p[0]),py=Y(p[1]); if (pen) ctx.lineTo(px,py); else {ctx.moveTo(px,py); pen=true;} }); ctx.stroke(); }
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  });
+  ctx.restore();
+  ctx.fillStyle=C.muted; ctx.textAlign='center'; ctx.textBaseline='bottom';
+  if (o.xlabel) drawRich(ctx,o.xlabel, m.l+pw/2, H-1);
+  if (o.ylabel){ ctx.save(); ctx.translate(11,m.t+ph/2); ctx.rotate(-Math.PI/2); ctx.textBaseline='middle'; drawRich(ctx,o.ylabel,0,0); ctx.restore(); }
+}
+
+
+
+/* ---------- graph generators (generators so long runs can pause) ---------- */
+function* genER(N, M, rnd){
+  M=Math.min(M, N*(N-1)/2);
+  const seen=new Set(), eu=new Int32Array(M), ev=new Int32Array(M); let m=0, t=0;
+  while (m<M){
+    const a=(rnd()*N)|0, b=(rnd()*N)|0; if (a===b) continue;
+    const key=a<b?a*N+b:b*N+a; if (seen.has(key)) continue;
+    seen.add(key); eu[m]=a; ev[m]=b; m++;
+    if ((++t & 32767)===0) yield;
+  }
+  return {N,M,eu,ev};
+}
+function* genSF(N, gamma, kmin, rnd){
+  const deg=new Int32Array(N); let sum=0;
+  for (let i=0;i<N;i++){ let k=Math.floor((kmin-0.5)*Math.pow(1-rnd(),-1/(gamma-1))+0.5); if (k<kmin) k=kmin; if (k>N-1) k=N-1; deg[i]=k; sum+=k; }
+  if (sum%2){ deg[0]++; sum++; }
+  const stubs=new Int32Array(sum); let t=0;
+  for (let i=0;i<N;i++) for (let j=0;j<deg[i];j++) stubs[t++]=i;
+  for (let i=sum-1;i>0;i--){ const j=(rnd()*(i+1))|0; const x=stubs[i]; stubs[i]=stubs[j]; stubs[j]=x; if ((i & 65535)===0) yield; }
+  const seen=new Set(), eu=new Int32Array(sum>>1), ev=new Int32Array(sum>>1); let m=0;
+  for (let s=0;s+1<sum;s+=2){
+    const a=stubs[s], b=stubs[s+1]; if (a===b) continue;
+    const key=a<b?a*N+b:b*N+a; if (seen.has(key)) continue;
+    seen.add(key); eu[m]=a; ev[m]=b; m++;
+    if ((s & 65535)===0) yield;
+  }
+  return {N,M:m,eu:eu.subarray(0,m),ev:ev.subarray(0,m)};
+}
+function runSync(it){ let r; while (!(r=it.next()).done); return r.value; }
+function degreesOf(g){ const d=new Int32Array(g.N); for (let e=0;e<g.M;e++){ d[g.eu[e]]++; d[g.ev[e]]++; } return d; }
+
+/* ---------- ER sweep: giant component against mean degree ---------- */
+const ERN=[1000,3000,10000,30000,100000], ERRUNS=[400,150,60,20,8];
+const KMAXE=4, KG=401, KSTEP=0.01, I1=100;
+let tMul=1, erGen=0;
+const erS=ERN.map((N,i)=>({kind:'er',N,base:ERRUNS[i],cnt:0,S:new Float64Array(KG),chi:new Float64Array(KG),smax1:0,logSmax1:0,hist:new Float64Array(48)}));
+const target=st=>st.base*tMul;
+function* erRun(st){
+  const gen=erGen, N=st.N, parent=new Int32Array(N), size=new Int32Array(N);
+  for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const g=parent[parent[i]]; parent[i]=g; i=g; } return i; };
+  // this sample is kept in local arrays and merged into st only when it is complete,
+  // so an unfinished or cancelled sample never enters the averages
+  const seen=new Set(), Sl=new Float64Array(KG), Cl=new Float64Array(KG), hl=st.N===100000?new Float64Array(48):null;
+  let m=0, smax=1, S2=N, t=0, sm1=0;
+  for (let i=0;i<KG;i++){
+    const tg=Math.round(i*KSTEP*N/2);
+    while (m<tg){
+      const a=(Math.random()*N)|0, b=(Math.random()*N)|0; if (a===b) continue;
+      const key=a<b?a*N+b:b*N+a; if (seen.has(key)) continue; seen.add(key); m++;
+      let ra=find(a), rb=find(b);
+      if (ra!==rb){ if (size[ra]<size[rb]){ const x=ra; ra=rb; rb=x; } S2+=2*size[ra]*size[rb]; parent[rb]=ra; size[ra]+=size[rb]; if (size[ra]>smax) smax=size[ra]; }
+      if ((++t & 16383)===0) yield;
+    }
+    Sl[i]=smax/N; Cl[i]= N>smax ? (S2-smax*smax)/(N-smax) : 0;
+    if (i===I1){
+      sm1=smax;
+      if (hl){ const lb=Math.log(1.5); let skip=true; for (let v=0;v<N;v++) if (parent[v]===v){ const s=size[v]; if (s===smax && skip){ skip=false; continue; } hl[Math.floor(Math.log(s)/lb+1e-9)]+=1; } }
+    }
+  }
+  if (gen!==erGen) return;
+  for (let i=0;i<KG;i++){ st.S[i]+=Sl[i]; st.chi[i]+=Cl[i]; }
+  st.smax1+=sm1; st.logSmax1+=Math.log(sm1);
+  if (hl) for (let k=0;k<48;k++) st.hist[k]+=hl[k];
+  st.cnt++;
+}
+
+/* ---------- bond percolation on ER and scale-free networks ---------- */
+const BN=[1000,10000,100000], BRUNS=[80,20,5], PG=201;
+let SFG=2.5, SFM=2, bGen=0;
+let bS=[];
+function makeBond(){
+  bGen++; bS=[];
+  BN.forEach((N,i)=>['sf','er'].forEach(type=>bS.push({kind:'bond',type,N,base:BRUNS[i],cnt:0,gen:bGen,S:new Float64Array(PG),chi:new Float64Array(PG),k1:0,k2:0,kmax:0,kmean0:NaN,hist:new Float64Array(N),theory:null,thCnt:-1})));
+}
+function* bondRun(st){
+  const N=st.N, rnd=Math.random;
+  let g;
+  if (st.type==='sf'){ g=yield* genSF(N,SFG,SFM,rnd); }
+  else {
+    const twin=bS.find(s=>s.type==='sf'&&s.N===N);
+    const km = twin.cnt ? twin.k1/twin.cnt : (isFinite(twin.kmean0)?twin.kmean0:4);
+    g=yield* genER(N,Math.round(km*N/2),rnd);
+  }
+  const d=degreesOf(g); let s1=0,s2=0,mx=0;
+  for (let i=0;i<N;i++){ const k=d[i]; s1+=k; s2+=k*k; if (k>mx) mx=k; }
+  const M=g.M, order=new Int32Array(M); for (let e=0;e<M;e++) order[e]=e;
+  for (let e=M-1;e>0;e--){ const j=(rnd()*(e+1))|0; const x=order[e]; order[e]=order[j]; order[j]=x; }
+  yield;
+  const parent=new Int32Array(N), size=new Int32Array(N); for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const q=parent[parent[i]]; parent[i]=q; i=q; } return i; };
+  let m=0, smax=1, S2=N; const Sl=new Float64Array(PG), Cl=new Float64Array(PG);
+  for (let j=0;j<PG;j++){
+    const tg=Math.round(j/(PG-1)*M);
+    while (m<tg){ const e=order[m++]; let ra=find(g.eu[e]), rb=find(g.ev[e]);
+      if (ra!==rb){ if (size[ra]<size[rb]){ const x=ra; ra=rb; rb=x; } S2+=2*size[ra]*size[rb]; parent[rb]=ra; size[ra]+=size[rb]; if (size[ra]>smax) smax=size[ra]; }
+      if ((m & 32767)===0) yield; }
+    Sl[j]=smax/N; Cl[j]= N>smax ? (S2-smax*smax)/(N-smax) : 0;
+  }
+  if (st.gen!==bGen) return;
+  for (let j=0;j<PG;j++){ st.S[j]+=Sl[j]; st.chi[j]+=Cl[j]; }
+  for (let i=0;i<N;i++) st.hist[d[i]]+=1;
+  st.k1+=s1/N; st.k2+=s2/N; st.kmax+=mx; if (!isFinite(st.kmean0)) st.kmean0=s1/N;
+  st.cnt++;
+}
+function gfTheory(hist){
+  const ks=[], pk=[]; let tot=0, mean=0;
+  for (let k=0;k<hist.length;k++) if (hist[k]>0){ ks.push(k); pk.push(hist[k]); tot+=hist[k]; }
+  for (let i=0;i<ks.length;i++){ pk[i]/=tot; mean+=ks[i]*pk[i]; }
+  const G0=x=>{ let s=0; for (let i=0;i<ks.length;i++) s+=pk[i]*Math.pow(x,ks[i]); return s; };
+  const G1=x=>{ let s=0; for (let i=0;i<ks.length;i++) if (ks[i]>0) s+=ks[i]*pk[i]*Math.pow(x,ks[i]-1); return s/mean; };
+  const out=new Float64Array(PG);
+  for (let j=0;j<PG;j++){ const p=j/(PG-1); let u=0; for (let it=0;it<500;it++){ const nu=1-p+p*G1(u); if (Math.abs(nu-u)<1e-9){ u=nu; break; } u=nu; } out[j]=Math.max(0,1-G0(u)); }
+  return out;
+}
+
+/* ---------- scheduler ---------- */
+let running=true, job=null, jobSt=null, timer=null, lastRef=0;
+function pick(){
+  let best=null, br=1;
+  erS.concat(bS).forEach(s=>{ const r=s.cnt/target(s); if (r<br){ br=r; best=s; } });
+  return best;
+}
+function work(){
+  timer=null; if (!running) return;
+  const t0=performance.now(); let did=false;
+  while (performance.now()-t0<12){
+    if (job && jobSt.kind==='bond' && jobSt.gen!==bGen){ job=null; }
+    if (!job){ jobSt=pick(); if (!jobSt) break; job = jobSt.kind==='er' ? erRun(jobSt) : bondRun(jobSt); }
+    if (job.next().done) job=null;
+    did=true;
+  }
+  const now=performance.now();
+  if (did){ if (now-lastRef>700){ refresh(); lastRef=performance.now(); } else status(); timer=setTimeout(work,0); }
+  else { refresh(); running=false; status(); $('run').textContent='계속'; }
+}
+function start(){ if (!running){ running=true; $('run').textContent='일시 정지'; } if (!timer) timer=setTimeout(work,0); status(); }
+function status(){
+  $('chipsE').innerHTML=erS.map(s=>`<span class="chip"><i class="sw" style="background:${NCOL(s.N)}"></i>N = ${fmtN(s.N)} <span style="color:var(--muted)">${s.cnt}/${target(s)}</span></span>`).join('');
+  $('chipsB').innerHTML=BN.map(N=>{ const a=bS.find(s=>s.type==='sf'&&s.N===N), b=bS.find(s=>s.type==='er'&&s.N===N); return `<span class="chip"><i class="sw" style="background:${NCOL(N)}"></i>N = ${fmtN(N)} <span style="color:var(--muted)">척도 없음 ${a.cnt}/${target(a)}, 무작위 ${b.cnt}/${target(b)}</span></span>`; }).join('');
+  const prog=list=>{ let d=0,t=0; list.forEach(s=>{ d+=Math.min(s.cnt,target(s))*s.N; t+=target(s)*s.N; }); return 100*d/t; };
+  $('progE').style.width=prog(erS).toFixed(1)+'%'; $('progB').style.width=prog(bS).toFixed(1)+'%';
+  $('stTxt').textContent = pick() ? (running?'표본 추출 중…':'일시 정지됨') : '완료';
+}
+
+/* ---------- results ---------- */
+const KGRID=Array.from({length:KG},(_,i)=>i*KSTEP), PGRID=Array.from({length:PG},(_,j)=>j/(PG-1));
+function erTheory(c){ if (c<=1) return 0; let S=1; for (let i=0;i<500;i++) S=1-Math.exp(-c*S); return S; }
+const R={};
+function refresh(){
+  const useE=erS.filter(s=>s.cnt>0);
+  R.eCurves=useE.map(s=>({N:s.N,S:KGRID.map((k,i)=>[k,s.S[i]/s.cnt]),chi:KGRID.map((k,i)=>[k,s.chi[i]/s.cnt])}));
+  const big=useE.length?useE[useE.length-1]:null;
+  R.big=big;
+  const fitOn=(pts,lo,hi)=>{ const q=pts.filter(p=>p[0]>=lo&&p[0]<=hi&&p[1]>0); return q.length>=3?linReg(q.map(p=>Math.log(p[0])),q.map(p=>Math.log(p[1]))):null; };
+  R.pB=R.pG=R.fB=R.fG=R.thB=null;
+  if (big){
+    R.pB=KGRID.map((k,i)=>[k-1,big.S[i]/big.cnt]).filter(p=>p[0]>0);
+    R.pG=KGRID.map((k,i)=>[1-k,big.chi[i]/big.cnt]).filter(p=>p[0]>0);
+    R.fB=fitOn(R.pB,0.05,0.2); R.fG=fitOn(R.pG,0.05,0.5);
+    R.thB=fitOn(KGRID.map(k=>[k-1,erTheory(k)]),0.05,0.2);
+  }
+  const sm=useE.filter(s=>s.cnt>=2).map(s=>[s.N,Math.exp(s.logSmax1/s.cnt)]);
+  R.pSm=sm; R.fSm=sm.length>=3?linReg(sm.map(p=>Math.log(p[0])),sm.map(p=>Math.log(p[1]))):null;
+  const hs=erS.find(s=>s.N===100000); R.ns=[];
+  if (hs.cnt){ for (let k=0;k<48;k++){ if (!hs.hist[k]) continue; const a=Math.ceil(Math.pow(1.5,k)-1e-9), b=Math.ceil(Math.pow(1.5,k+1)-1e-9), w=b-a; if (w<=0) continue; R.ns.push([Math.sqrt(a*(b-1)),hs.hist[k]/(hs.N*hs.cnt*w)]); } }
+  R.fT = fitOn(R.ns,3,300);
+  bS.forEach(s=>{ if (s.cnt && s.N===100000 && s.thCnt!==s.cnt){ s.theory=gfTheory(s.hist); s.thCnt=s.cnt; } });
+  drawAll();
+}
+function drawE(){
+  const eC=R.eCurves||[];
+  const th=KGRID.map(k=>[k,erTheory(k)]);
+  plot($('e1'),{x:[0,4],y:[-0.02,1.02],series:eC.map(c=>({color:NCOL(c.N),pts:c.S})).concat([{color:C.ink,dash:[6,4],width:1.3,pts:th}]),vlines:[{x:1,color:C.crit,dash:[4,4],label:'⟨k⟩ = 1'}],xlabel:'평균 연결선수 ⟨k⟩',ylabel:'S'});
+  const thc=KGRID.map(k=>{ const S=erTheory(k); const v=1/(1-k+k*S); return [k, (Math.abs(k-1)<0.02)?NaN:v]; });
+  plot($('e2'),{x:[0,4],zeroY:true,y:[0,Math.max(30,...eC.map(c=>Math.max(...c.chi.map(p=>p[1]))))*1.05],series:eC.map(c=>({color:NCOL(c.N),pts:c.chi})).concat([{color:C.ink,dash:[6,4],width:1.3,noScale:true,pts:thc}]),vlines:[{x:1,color:C.crit,dash:[4,4]}],xlabel:'평균 연결선수 ⟨k⟩',ylabel:'⟨s⟩'});
+  const ref=(slope,x0,y0)=>[0.005,0.01,0.03,0.1,0.3,1,3].map(x=>[x,y0*Math.pow(x/x0,slope)]);
+  const s3=[]; if (R.pB){ s3.push({color:NCOL(R.big.N),pts:R.pB}); s3.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:Array.from({length:120},(_,i)=>{ const x=0.005*Math.pow(600,i/119); return [x,erTheory(1+x)]; })}); s3.push({color:C.muted,dash:[2,4],width:1.2,noScale:true,pts:ref(1,0.01,erTheory(1.01))}); }
+  plot($('e3'),{x:[0.005,3],logx:true,logy:true,series:s3,xlabel:'⟨k⟩ − 1',ylabel:'S'});
+  $('t3').innerHTML=R.fB?`N = ${fmtN(R.big.N)}에서 0.05 ≤ ⟨k⟩ − 1 ≤ 0.2의 기울기: <b>${R.fB.slope.toFixed(3)}</b>. 같은 범위에서 이론 곡선은 ${R.thB.slope.toFixed(3)}을 주며, ⟨k⟩ → 1에서만 β = 1에 다가갑니다. 약 0.03 아래에서는 유한 크기 때문에 데이터가 뭉툭해집니다.`:'';
+  const s4=[]; if (R.pG){ s4.push({color:NCOL(R.big.N),pts:R.pG}); s4.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:[0.005,1].map(x=>[x,1/x])}); }
+  plot($('e4'),{x:[0.005,1],logx:true,logy:true,series:s4,xlabel:'1 − ⟨k⟩',ylabel:'⟨s⟩'});
+  $('t4').innerHTML=R.fG?`0.05 ≤ 1 − ⟨k⟩ ≤ 0.5의 기울기: −γ<sub>p</sub> ≈ <b>${R.fG.slope.toFixed(3)}</b> <span style="color:var(--muted)">정확한 값 −1, 문턱 아래에서 ⟨s⟩ = 1/(1 − ⟨k⟩)이므로</span>`:'';
+  const s5=[{dots:true,r:5,color:C.accent,pts:R.pSm||[]}]; if (R.fSm) s5.push({color:C.ink,dash:[6,4],width:1.2,pts:[800,130000].map(N=>[N,Math.exp(R.fSm.icpt+R.fSm.slope*Math.log(N))])});
+  plot($('e5'),{x:[800,130000],logx:true,logy:true,xticks:ERN,xfmt:fmtN,series:s5,xlabel:'N',ylabel:'S_{max} (노드 수)'});
+  $('t5').innerHTML=R.fSm?`기울기: <b>${R.fSm.slope.toFixed(3)}</b>${isFinite(R.fSm.se)?' ± '+R.fSm.se.toFixed(3):''} <span style="color:var(--muted)">N → ∞에서 정확한 값 2/3 = 0.667, 이 크기에서는 보정이 큽니다</span>`:'적어도 세 가지 크기를 기다리는 중입니다.';
+  const s6=[{dots:true,r:3.5,color:C.l256,pts:R.ns||[]}];
+  if (R.ns && R.ns.length){ const q=R.ns.find(p=>p[0]>=3)||R.ns[0]; s6.push({color:C.ink,dash:[6,4],width:1.2,noScale:true,pts:[1,3e4].map(s=>[s,q[1]*Math.pow(s/q[0],-2.5)])}); }
+  plot($('e6'),{logx:true,logy:true,series:s6,xlabel:'덩어리 크기 s',ylabel:'n_s'});
+  $('t6').innerHTML=R.fT?`3 ≤ s ≤ 300의 기울기: τ ≈ <b>${(-R.fT.slope).toFixed(3)}</b> <span style="color:var(--muted)">정확한 값 5/2</span>`:'N = 100 000을 기다리는 중입니다.';
+  const rows=[['β','S ∝ (⟨k⟩ − 1)<sup>β</sup>',R.fB?R.fB.slope:NaN,'1'],['γ<sub>p</sub>','⟨s⟩ ∝ (1 − ⟨k⟩)<sup>−γ<sub>p</sub></sup>',R.fG?-R.fG.slope:NaN,'1'],['τ','⟨k⟩ = 1에서 n<sub>s</sub> ∝ s<sup>−τ</sup>',R.fT?-R.fT.slope:NaN,'5/2'],['S<sub>max</sub> 지수','⟨k⟩ = 1에서 S<sub>max</sub> ∝ N<sup>2/3</sup>',R.fSm?R.fSm.slope:NaN,'2/3'],['⟨k⟩<sub>c</sub>','문턱 평균 연결선수','–','1']];
+  $('erTable').innerHTML='<thead><tr><th>물리량</th><th>정의</th><th style="text-align:right">이번 실행</th><th style="text-align:right">평균장 (정확한 값)</th></tr></thead><tbody>'+rows.map(r=>`<tr><td><b>${r[0]}</b></td><td>${r[1]}</td><td class="num">${typeof r[2]==='number'?f3(r[2]):r[2]}</td><td class="num">${r[3]}</td></tr>`).join('')+'</tbody>';
+}
+function logBinDeg(hist){
+  const out=[]; let tot=0; for (let k=0;k<hist.length;k++) tot+=hist[k]; if (!tot) return out;
+  const b=1.35; let lo=1;
+  while (lo<hist.length){ const hi=Math.max(lo+1,Math.ceil(lo*b)); let c=0; for (let k=lo;k<hi&&k<hist.length;k++) c+=hist[k]; if (c>0) out.push([Math.sqrt(lo*(hi-1)),c/tot/(hi-lo)]); lo=hi; }
+  return out;
+}
+function drawB(){
+  const sf=bS.filter(s=>s.type==='sf'), er=bS.filter(s=>s.type==='er');
+  const bigSF=sf.find(s=>s.N===100000), bigER=er.find(s=>s.N===100000);
+  const d1=[];
+  if (bigER.cnt) d1.push({dots:true,r:3.5,color:C.ink,pts:logBinDeg(bigER.hist)});
+  if (bigSF.cnt){ const pts=logBinDeg(bigSF.hist); d1.push({dots:true,r:3.5,color:C.crit,pts}); const q=pts.find(p=>p[0]>=SFM*2)||pts[0]; if (q) d1.push({color:C.crit,dash:[6,4],width:1.2,noScale:true,pts:[SFM,1e5].map(k=>[k,q[1]*Math.pow(k/q[0],-SFG)])}); }
+  plot($('b1'),{logx:true,logy:true,series:d1,xlabel:'연결선수 k',ylabel:'p(k)'});
+  const pcTh=s=>{ if (!s.cnt) return NaN; const k1=s.k1/s.cnt, k2=s.k2/s.cnt; return k1/(k2-k1); };
+  // peak of ⟨s⟩ over the whole range of p; a maximum at the end p = 1 is not an interior peak
+  const peakJ=s=>{ if (!s.cnt) return -1; let b=0, j0=0; for (let j=1;j<PG;j++) if (s.chi[j]>b){ b=s.chi[j]; j0=j; } return j0; };
+  const pcMe=s=>{ const j=peakJ(s); return j>0 && j<PG-1 ? PGRID[j] : NaN; };
+  const pcMeTxt=s=>{ const j=peakJ(s); return j<=0 ? '–' : j===PG-1 ? '안에 없음 (p = 1에서 최대)' : f3(PGRID[j],3); };
+  const pcThTxt=s=>{ const v=pcTh(s); return !s.cnt ? '–' : v>=0 && v<=1 ? f3(v,4) : (isFinite(v)?f3(v,4)+' &gt; 1: [0, 1]에 없음':'[0, 1]에 없음'); };
+  const curves=(list,key)=>list.filter(s=>s.cnt).map(s=>({color:NCOL(s.N),pts:PGRID.map((p,j)=>[p,s[key][j]/s.cnt])}));
+  const thS=(s)=>s&&s.theory?[{color:C.ink,dash:[6,4],width:1.3,pts:PGRID.map((p,j)=>[p,s.theory[j]])}]:[];
+  plot($('b2'),{x:[0,1],y:[-0.02,1.02],series:curves(er,'S').concat(thS(bigER)),vlines:er.filter(s=>s.cnt).map(s=>({x:pcTh(s),color:NCOL(s.N),dash:[4,4]})),xlabel:'p',ylabel:'S'});
+  plot($('b3'),{x:[0,1],y:[-0.02,1.02],series:curves(sf,'S').concat(thS(bigSF)),vlines:sf.filter(s=>s.cnt).map(s=>({x:pcTh(s),color:NCOL(s.N),dash:[4,4]})),xlabel:'p',ylabel:'S'});
+  plot($('b4'),{x:[0,1],zeroY:true,series:curves(sf,'chi').concat(curves(er,'chi').map(c=>Object.assign(c,{dash:[5,4],width:1.2}))),xlabel:'p',ylabel:'⟨s⟩'});
+  const line=(list,color)=>{ const q=list.filter(s=>s.cnt); return [{color,width:1.6,pts:q.map(s=>[s.N,pcTh(s)])},{dots:true,r:5,color,pts:q.map(s=>[s.N,pcMe(s)])}]; };
+  plot($('b5'),{x:[800,130000],logx:true,logy:true,xticks:BN,xfmt:fmtN,series:line(er,C.ink).concat(line(sf,C.crit)),xlabel:'N',ylabel:'p_c'});
+  $('momTable').innerHTML='<thead><tr><th>네트워크</th><th style="text-align:right">N</th><th style="text-align:right">⟨k⟩</th><th style="text-align:right">⟨k²⟩</th><th style="text-align:right">가장 큰 연결선수</th><th style="text-align:right">p<sub>c</sub> = ⟨k⟩/(⟨k²⟩ − ⟨k⟩)</th><th style="text-align:right">⟨s⟩의 봉우리</th></tr></thead><tbody>'+
+    ['er','sf'].map(t=>bS.filter(s=>s.type===t).map(s=>`<tr><td><b>${t==='er'?'에르되시–레니':'척도 없음, γ = '+SFG}</b></td><td class="num">${fmtN(s.N)}</td><td class="num">${s.cnt?f3(s.k1/s.cnt,2):'–'}</td><td class="num">${s.cnt?f3(s.k2/s.cnt,1):'–'}</td><td class="num">${s.cnt?Math.round(s.kmax/s.cnt):'–'}</td><td class="num">${pcThTxt(s)}</td><td class="num">${pcMeTxt(s)}</td></tr>`).join('')).join('')+'</tbody>';
+  const beta=g=>g>4?'1':g>3?(1/(g-3)).toFixed(3):g>2?(1/(3-g)).toFixed(3):'–';
+  $('sfTable').innerHTML='<thead><tr><th>네트워크</th><th>N → ∞에서의 문턱</th><th>문턱 근처의 β</th><th>지금 설정</th></tr></thead><tbody>'+
+    `<tr><td><b>Erdős–Rényi</b></td><td>p<sub>c</sub> = 1/⟨k⟩ &gt; 0</td><td>1</td><td></td></tr>`+
+    `<tr><td><b>척도 없음, γ &gt; 4</b></td><td>p<sub>c</sub> &gt; 0</td><td>1 (평균장)</td><td>${SFG>4?'γ = '+SFG:''}</td></tr>`+
+    `<tr><td><b>척도 없음, 3 &lt; γ &lt; 4</b></td><td>p<sub>c</sub> &gt; 0</td><td>1/(γ − 3)</td><td>${SFG>3&&SFG<4?'γ = '+SFG+': β = '+beta(SFG):''}</td></tr>`+
+    `<tr><td><b>척도 없음, 2 &lt; γ &lt; 3</b></td><td>p<sub>c</sub> → 0, 임계점 없음</td><td>1/(3 − γ)</td><td>${SFG>2&&SFG<3?'γ = '+SFG+': β = '+beta(SFG):''}</td></tr></tbody>`;
+}
+function drawAll(){ drawE(); drawB(); status(); }
+
+/* ---------- live network ---------- */
+const NV={type:'gnp',k:4,gamma:2.5,kmin:2,N:300,seed:1,p:0.005,pmax:1,showRem:false,mode:'big',logp:true};
+let PAL=[];
+function buildPal(){ const dark=hexRgb(C.panel)[0]<100; PAL=[]; for (let i=0;i<24;i++){ const h=(i*137.508+30)%360; PAL.push(`hsl(${h.toFixed(0)} ${dark?38:40}% ${dark?55:58}%)`); } }
+function layout(N, eu, ev, rnd){
+  const x=new Float64Array(N), y=new Float64Array(N), dx=new Float64Array(N), dy=new Float64Array(N);
+  for (let i=0;i<N;i++){ x[i]=rnd(); y[i]=rnd(); }
+  const K=0.9*Math.sqrt(1/N), iters=320;
+  for (let it=0;it<iters;it++){
+    const temp=0.08*(1-it/iters)+0.002;
+    dx.fill(0); dy.fill(0);
+    for (let i=0;i<N;i++) for (let j=i+1;j<N;j++){ let ux=x[i]-x[j], uy=y[i]-y[j]; let d2=ux*ux+uy*uy; if (d2<1e-8){ ux=1e-4; uy=0; d2=1e-8; } const f=K*K/d2; dx[i]+=ux*f; dy[i]+=uy*f; dx[j]-=ux*f; dy[j]-=uy*f; }
+    for (let e=0;e<eu.length;e++){ const a=eu[e], b=ev[e]; const ux=x[a]-x[b], uy=y[a]-y[b]; const d=Math.sqrt(ux*ux+uy*uy)+1e-9; const f=d/K; dx[a]-=ux*f; dy[a]-=uy*f; dx[b]+=ux*f; dy[b]+=uy*f; }
+    for (let i=0;i<N;i++){ dx[i]+=(0.5-x[i])*1.2; dy[i]+=(0.5-y[i])*1.2; const d=Math.sqrt(dx[i]*dx[i]+dy[i]*dy[i])+1e-12, s=Math.min(d,temp)/d; x[i]+=dx[i]*s; y[i]+=dy[i]*s; }
+  }
+  let x0=Infinity,x1=-Infinity,y0=Infinity,y1=-Infinity; for (let i=0;i<N;i++){ x0=Math.min(x0,x[i]); x1=Math.max(x1,x[i]); y0=Math.min(y0,y[i]); y1=Math.max(y1,y[i]); }
+  const sc=1/Math.max(x1-x0,y1-y0,1e-9); for (let i=0;i<N;i++){ x[i]=(x[i]-x0)*sc+(1-(x1-x0)*sc)/2; y[i]=(y[i]-y0)*sc+(1-(y1-y0)*sc)/2; }
+  return {x,y};
+}
+function placePcMark(){
+  const m=$('pcMark'); m.hidden=!NV.pcIn; if (NV.pcIn) m.style.left=(p2t(NV.pc)/10).toFixed(2)+'%';
+  const b=$('toPc'); b.disabled=!NV.pcIn; b.title= NV.pcIn ? '' : '이 네트워크에는 [0, 1]에 임계점이 없습니다';
+}
+function fmtP(p){ return NV.type==='gnp' ? (p===0?'0':p>=0.1?p.toFixed(3):p.toPrecision(3)) : p.toFixed(3); }
+const PLOG=1e-4;
+function useLog(){ return NV.type==='gnp' && NV.logp; }
+function p2t(p){ if (!useLog()) return 1000*p; if (p<=PLOG) return 0; return 1000*Math.log10(p/PLOG)/Math.log10(1/PLOG); }
+function t2p(t){ t=+t; if (!useLog()) return t/1000; if (t<=0) return 0; return PLOG*Math.pow(1/PLOG,t/1000); }
+const layCache=new Map();
+let buildT=0;
+// several quick changes of the network settings lead to a single rebuild with the latest settings
+function scheduleBuild(){ stopOutbreak(); stopPlay(); if (!buildT) buildT=setTimeout(()=>{ buildT=0; buildView(); },40); }
+function buildView(){
+  if (buildT){ clearTimeout(buildT); buildT=0; }
+  stopOutbreak(); stopPlay();
+  const rnd=mulberry32(NV.seed*1013+NV.N*7+({er:0,gnp:3,sf:5})[NV.type]);
+  const t=NV.type, Nn=NV.N;
+  let g;
+  if (t==='gnp'){
+    const M=Nn*(Nn-1)/2, eu=new Int32Array(M), ev=new Int32Array(M); NV.u=new Float32Array(M); let e=0;
+    for (let a=0;a<Nn;a++) for (let b=a+1;b<Nn;b++){ eu[e]=a; ev[e]=b; NV.u[e]=rnd(); e++; }
+    g={N:Nn,M,eu,ev};
+  } else {
+    g = t==='er' ? runSync(genER(Nn,Math.round(NV.k*Nn/2),rnd)) : runSync(genSF(Nn,NV.gamma,NV.kmin,rnd));
+    NV.u=new Float32Array(g.M); for (let e=0;e<g.M;e++) NV.u[e]=rnd();
+  }
+  NV.g=g; NV.deg=degreesOf(g);
+  const N=g.N, start=new Int32Array(N+1); for (let i=0;i<N;i++) start[i+1]=start[i]+NV.deg[i];
+  const fill=start.slice(0,N), adj=new Int32Array(2*g.M), adjE=new Int32Array(2*g.M);
+  for (let e=0;e<g.M;e++){ const a=g.eu[e], b=g.ev[e]; adj[fill[a]]=b; adjE[fill[a]++]=e; adj[fill[b]]=a; adjE[fill[b]++]=e; }
+  NV.start=start; NV.adj=adj; NV.adjE=adjE;
+  let s1=0,s2=0; for (let i=0;i<N;i++){ s1+=NV.deg[i]; s2+=NV.deg[i]**2; } s1/=N; s2/=N;
+  // keep the moment value even when it exceeds 1: then the approximation has no critical point in [0, 1]
+  NV.pc= t==='gnp' ? 1/(N-1) : (s2>s1 ? s1/(s2-s1) : Infinity);
+  NV.pcIn= NV.pc>=0 && NV.pc<=1;
+  // the force layout visits all node pairs on each of its iterations, so reuse it when the same network comes back
+  const key=[t,Nn,NV.seed,t==='er'?NV.k:'',t==='sf'?NV.gamma+'/'+NV.kmin:''].join('|');
+  NV.pos=layCache.get(key);
+  if (NV.pos){ layCache.delete(key); }
+  else if (t==='gnp'){ const lay=[]; for (let e=0;e<g.M;e++) if (NV.u[e]<4/(N-1)) lay.push(e); NV.pos=layout(N,Int32Array.from(lay,e=>g.eu[e]),Int32Array.from(lay,e=>g.ev[e]),rnd); }
+  else NV.pos=layout(N,g.eu,g.ev,rnd);
+  layCache.set(key,NV.pos); if (layCache.size>12) layCache.delete(layCache.keys().next().value);
+  buildCurve();
+  placePcMark();
+  $('remWrap').hidden=(t==='gnp'); $('logWrap').hidden=(t!=='gnp');
+  $('lKept').textContent= t==='gnp' ? '있는 링크' : '남긴 링크';
+  $('lPc').innerHTML = t==='gnp' ? 'p<sub>c</sub> = 1/(N − 1), ⟨k⟩ = 1인 곳' : '이 네트워크의 p<sub>c</sub> = ⟨k⟩ / (⟨k²⟩ − ⟨k⟩)';
+  const notes={
+    gnp:'p는 에르되시–레니 그래프 G(N, p)를 특징짓는 연결 확률입니다: N(N − 1)/2개의 쌍 각각이 확률 p로 연결되며, p = 0의 빈 그래프에서 p = 1의 완전 그래프까지 이어지고, ⟨k⟩ = p(N − 1)입니다. 거대 덩어리는 이미 p<sub>c</sub> = 1/(N − 1)에서 나타납니다.',
+    er:'p는 평균 연결선수가 ⟨k⟩인 고정된 에르되시–레니 네트워크의 각 링크를 남길 확률(결합 스며들기)이므로, 남긴 네트워크의 평균 연결선수는 p⟨k⟩입니다. 전염병에서 p는 전파 확률입니다.',
+    sf:'p is the chance that each link of the scale-free network is kept (bond percolation). For an epidemic it is the transmissibility, the chance that a link passes the infection on.'};
+  $('pNote').innerHTML=notes[t];
+  $('netNote').textContent= t==='gnp' ? `노드 N = ${N}개와 가능한 쌍 ${g.M}개 모두. 쌍마다 자기 난수가 있어 p가 그 값을 넘으면 연결되므로, p를 올리면 링크가 더해지기만 합니다. 배치는 ⟨k⟩ = 4인 네트워크에서 정해 고정했습니다. 가장 큰 덩어리는 파랑입니다.`
+    : t==='er' ? `노드 N = ${N}개, 전체 네트워크의 링크 ${g.M}개. 노드 크기는 연결선수에 따라 커지고, 가장 큰 덩어리는 파랑입니다.`
+    : `노드 N = ${N}개, 전체 네트워크의 링크 ${g.M}개, 연결선수는 최소 ${NV.kmin}, 최대 ${Math.max(...NV.deg)}인 p(k) ∝ k^−${NV.gamma}에서 뽑았습니다. 노드 크기는 연결선수에 따라 커지고, 가장 큰 덩어리는 파랑입니다.`;
+  updateView();
+}
+function updateView(){
+  const g=NV.g, N=g.N, parent=new Int32Array(N), size=new Int32Array(N);
+  for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const q=parent[parent[i]]; parent[i]=q; i=q; } return i; };
+  let kept=0;
+  for (let e=0;e<g.M;e++){ if (NV.u[e]>=NV.p) continue; kept++; let a=find(g.eu[e]), b=find(g.ev[e]); if (a!==b){ if (size[a]<size[b]){ const t=a; a=b; b=t; } parent[b]=a; size[a]+=size[b]; } }
+  for (let i=0;i<N;i++) parent[i]=find(i);
+  let smax=0, mr=-1, s2nd=0, nc=0, S2=0;
+  for (let i=0;i<N;i++) if (parent[i]===i){ nc++; const s=size[i]; S2+=s*s; if (s>smax){ s2nd=smax; smax=s; mr=i; } else if (s>s2nd) s2nd=s; }
+  NV.root=parent; NV.size=size; NV.mr=mr; NV.kept=kept;
+  $('pOut').textContent=fmtP(NV.p); $('p').value=p2t(NV.p);
+  $('rKept').textContent= NV.type==='gnp' ? `쌍 ${N*(N-1)/2}개 중 ${kept}개` : `${kept} of ${g.M}`;
+  $('rKm').textContent=(2*kept/N).toFixed(3);
+  $('rDen').textContent=(2*kept/(N*(N-1))).toFixed(5);
+  $('rS').textContent=(smax/N).toFixed(3);
+  $('rS2').textContent=`${s2nd} nodes`;
+  $('rNc').textContent=nc;
+  $('rChi').textContent= N>smax ? ((S2-smax*smax)/(N-smax)).toFixed(2) : '–';
+  $('rPc').textContent= NV.type==='gnp' ? NV.pc.toPrecision(3) : NV.pcIn ? NV.pc.toFixed(3) : (isFinite(NV.pc) ? NV.pc.toFixed(3)+' > 1: [0, 1]에 임계점 없음' : '[0, 1]에 임계점 없음');
+  if (!NV.ob) $('rOut').textContent='시작 안 함';
+  renderNet(); drawCurve();
+}
+function renderNet(){
+  const cv=$('net'), dpr=window.devicePixelRatio||1, W=cv.clientWidth; if (!W||!NV.g) return;
+  const w=Math.round(W*dpr); if (cv.width!==w){ cv.width=w; cv.height=w; }
+  const ctx=cv.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle=C.panel; ctx.fillRect(0,0,W,W);
+  const g=NV.g, m=14, X=i=>m+NV.pos.x[i]*(W-2*m), Y=i=>m+NV.pos.y[i]*(W-2*m);
+  const ob=NV.ob, sc=W/600, big=NV.mode==='big', mr=NV.mr, giantBig=NV.size[mr]>1;
+  const line=(e)=>{ ctx.beginPath(); ctx.moveTo(X(g.eu[e]),Y(g.eu[e])); ctx.lineTo(X(g.ev[e]),Y(g.ev[e])); ctx.stroke(); };
+  ctx.lineCap='round';
+  const seg=(e)=>{ ctx.moveTo(X(g.eu[e]),Y(g.eu[e])); ctx.lineTo(X(g.ev[e]),Y(g.ev[e])); };
+  if (NV.showRem && NV.type!=='gnp'){ ctx.strokeStyle=C.rule; ctx.globalAlpha=0.5; ctx.lineWidth=0.6; ctx.beginPath(); for (let e=0;e<g.M;e++) if (NV.u[e]>=NV.p) seg(e); ctx.stroke(); }
+  if (big){ ctx.strokeStyle=C.muted; ctx.globalAlpha=0.35; ctx.lineWidth=0.9; ctx.beginPath(); for (let e=0;e<g.M;e++) if (NV.u[e]<NV.p && NV.root[g.eu[e]]!==mr) seg(e); ctx.stroke(); }
+  else { ctx.globalAlpha=0.7; ctx.lineWidth=0.9; for (let e=0;e<g.M;e++){ if (NV.u[e]>=NV.p || NV.root[g.eu[e]]===mr) continue; ctx.strokeStyle=PAL[(Math.imul(NV.root[g.eu[e]],2654435761)>>>27)%PAL.length]; ctx.beginPath(); seg(e); ctx.stroke(); } }
+  if (giantBig){ const dense=NV.kept>4000; ctx.strokeStyle=C.accent; ctx.globalAlpha=dense?0.25:0.85; ctx.lineWidth=(dense?0.6:1.8)*Math.max(0.8,sc); const stride=Math.max(1,Math.floor(NV.kept/12000)); ctx.beginPath(); for (let e=0;e<g.M;e+=stride) if (NV.u[e]<NV.p && NV.root[g.eu[e]]===mr) seg(e); ctx.stroke(); }
+  if (ob){ ctx.strokeStyle=C.crit; ctx.globalAlpha=0.95; ctx.lineWidth=2.2; ob.tx.forEach(e=>line(e)); }
+  ctx.globalAlpha=1;
+  for (let i=0;i<g.N;i++){
+    const root=NV.root[i], inG=giantBig&&root===mr, rBase=(NV.type==="gnp"?4:Math.min(11,2.4+0.9*Math.sqrt(NV.deg[i])))*Math.max(0.7,sc);
+    const st=ob?ob.state[i]:0;
+    let r=rBase, fill, stroke=C.panel, alpha=1;
+    if (st){ fill=C.crit; alpha= st===2?0.5:1; }
+    else if (inG){ r=rBase*1.15; fill=C.accent; }
+    else if (NV.size[root]===1){ fill=C.panel; stroke=C.muted; r=rBase*0.85; }
+    else if (big){ fill=C.muted; alpha=0.55; r=rBase*0.85; }
+    else fill=PAL[(Math.imul(root,2654435761)>>>27)%PAL.length];
+    if (inG && !st){ ctx.globalAlpha=0.2; ctx.fillStyle=C.accent; ctx.beginPath(); ctx.arc(X(i),Y(i),r+4*Math.max(0.8,sc),0,7); ctx.fill(); }
+    ctx.globalAlpha=alpha; ctx.beginPath(); ctx.arc(X(i),Y(i),r,0,7); ctx.fillStyle=fill; ctx.fill();
+    ctx.globalAlpha=1; ctx.lineWidth=1; ctx.strokeStyle=stroke; ctx.stroke();
+    if (st===1){ ctx.strokeStyle=C.crit; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(X(i),Y(i),r+3,0,7); ctx.stroke(); }
+  }
+  const S=NV.size[mr]/g.N, txt=`가장 큰 덩어리: 노드의 ${(100*S).toFixed(1)}%`;
+  ctx.font=`600 ${Math.round(15*Math.max(0.8,sc))}px "IBM Plex Sans KR", system-ui, sans-serif`; ctx.textBaseline='top'; ctx.textAlign='left';
+  const tw=ctx.measureText(txt).width; ctx.fillStyle=C.panel; ctx.globalAlpha=0.85; ctx.fillRect(10,10,tw+16,26*Math.max(0.8,sc)); ctx.globalAlpha=1;
+  ctx.fillStyle=C.accent; ctx.fillText(txt,18,15);
+}
+function buildCurve(){
+  const g=NV.g, N=g.N, order=Array.from({length:g.M},(_,e)=>e).sort((a,b)=>NV.u[a]-NV.u[b]);
+  const parent=new Int32Array(N), size=new Int32Array(N); for (let i=0;i<N;i++){ parent[i]=i; size[i]=1; }
+  const find=i=>{ while (parent[i]!==i){ const q=parent[parent[i]]; parent[i]=q; i=q; } return i; };
+  let smax=1; const pts=[[0,1/N]];
+  for (const e of order){ let a=find(g.eu[e]), b=find(g.ev[e]); if (a!==b){ if (size[a]<size[b]){ const t=a; a=b; b=t; } parent[b]=a; size[a]+=size[b]; if (size[a]>smax){ pts.push([NV.u[e],smax/N]); smax=size[a]; pts.push([NV.u[e],smax/N]); } } }
+  pts.push([NV.pmax,smax/N]);
+  NV.curve=pts;
+  if (NV.type==='gnp'){ NV.theory=Array.from({length:400},(_,i)=>{ const p=PLOG*Math.pow(1/PLOG,i/399); return [p,erTheory(p*(N-1))]; }); }
+  else if (NV.type==='er'){ const k=2*g.M/N; NV.theory=PGRID.map(p=>[p,erTheory(p*k)]); }
+  else { const h=new Float64Array(N); for (let i=0;i<N;i++) h[NV.deg[i]]++; const t=gfTheory(h); NV.theory=PGRID.map((p,j)=>[p,t[j]]); }
+}
+function drawCurve(){
+  if (!NV.curve) return;
+  const S=NV.size[NV.mr]/NV.g.N;
+  const er=NV.type==='gnp', lg=useLog();
+  plot($('netS'),{x:lg?[PLOG,1]:[0,1],logx:lg,y:[0,1],series:[
+    {color:C.ink,dash:[6,4],width:1.2,pts:NV.theory},
+    {color:C.accent,width:2.2,pts:NV.curve},
+    {dots:true,r:6,color:C.accent,pts:[[NV.p,S]]}],
+    vlines:(NV.pcIn?[{x:NV.pc,color:C.crit,dash:[4,4],label:'p_c'}]:[]).concat([{x:NV.p,color:C.ink,width:1}]),xlabel: er?'p, 연결 확률':'p, 남긴 링크의 비율',ylabel:'S'});
+  $('gFill').style.width=(100*S).toFixed(1)+'%';
+  $('gTxt').textContent=`노드의 ${(100*S).toFixed(1)}% (${NV.g.N}개 중 ${NV.size[NV.mr]}개)`;
+}
+function stopOutbreak(){ if (NV.ob && NV.ob.timer) clearTimeout(NV.ob.timer); NV.ob=null; }
+function startOutbreak(){
+  stopOutbreak();
+  const N=NV.g.N; let seed;
+  if ($('seedSel').value==='hub'){ seed=0; for (let i=1;i<N;i++) if (NV.deg[i]>NV.deg[seed]) seed=i; }
+  else seed=(Math.random()*N)|0;
+  const ob={state:new Uint8Array(N),cur:[seed],gen:0,tot:1,tx:new Set(),seed,timer:null};
+  ob.state[seed]=1; NV.ob=ob;
+  const compSize=NV.size[NV.root[seed]];
+  const step=()=>{
+    const next=[];
+    for (const v of ob.cur){ for (let q=NV.start[v];q<NV.start[v+1];q++){ const e=NV.adjE[q]; if (NV.u[e]>=NV.p) continue; const w=NV.adj[q]; if (ob.state[w]===0){ ob.state[w]=1; next.push(w); ob.tx.add(e); } } ob.state[v]=2; }
+    for (const w of next) ob.tot++;
+    ob.cur=next; ob.gen++;
+    if (next.length){ $('rOut').textContent=`${ob.gen}세대: 지금까지 ${ob.tot}명 감염`; renderNet(); ob.timer=setTimeout(step,380); }
+    else { $('rOut').textContent=`${ob.gen}세대 뒤 끝남: ${ob.tot}개 노드 (${(100*ob.tot/N).toFixed(1)}%), 첫 환자가 속한 덩어리 전체 (${compSize})`; ob.timer=null; renderNet(); }
+  };
+  $('rOut').textContent='0세대: 1명 감염'; renderNet();
+  ob.timer=setTimeout(step,380);
+}
+
+/* ---------- wiring ---------- */
+let rafV=0;
+function setP(p,fromPlay){ if (!fromPlay) stopPlay(); NV.p=Math.min(1,Math.max(0,+p)); stopOutbreak(); if (!rafV) rafV=requestAnimationFrame(()=>{ rafV=0; updateView(); }); $('pOut').textContent=fmtP(NV.p); }
+$('p').addEventListener('input',e=>setP(t2p(e.target.value)));
+let play=null, scanPaused=false;
+function stopPlay(paused){ scanPaused=!!paused; if (play){ cancelAnimationFrame(play.raf); play=null; } $('play').textContent= scanPaused ? '훑기 계속' : 'p 훑기'; }
+function startPlay(){
+  if (!scanPaused || NV.p>=0.999) NV.p=0;
+  scanPaused=false;
+  const dur=+$('speed').value; let last=performance.now();
+  play={raf:0}; $('play').textContent='훑기 멈추기';
+  const tick=now=>{ if (!play) return; const dt=now-last; last=now; const tt=Math.max(p2t(NV.p),0)+dt/dur*1000, p=t2p(tt);
+    if (tt>=1000){ setP(1,true); stopPlay(); return; } setP(p,true); play.raf=requestAnimationFrame(tick); };
+  play.raf=requestAnimationFrame(tick);
+}
+$('play').onclick=()=>{ if (play) stopPlay(true); else startPlay(); };
+document.querySelectorAll('input[name=cm]').forEach(r=>r.onchange=e=>{ NV.mode=e.target.value; renderNet(); });
+(function(){ const cv=$('netS'); let drag=false;
+  const at=e=>{ if (!cv._inv) return; const r=cv.getBoundingClientRect(); setP(cv._inv(e.clientX-r.left)); };
+  cv.addEventListener('pointerdown',e=>{ drag=true; cv.setPointerCapture(e.pointerId); at(e); });
+  cv.addEventListener('pointermove',e=>{ if (drag) at(e); });
+  cv.addEventListener('pointerup',()=>{ drag=false; });
+})();
+$('toPc').onclick=()=>{ if (NV.pcIn) setP(NV.pc); };
+$('newNet').onclick=()=>{ NV.seed++; scheduleBuild(); };
+document.querySelectorAll('input[name=nt]').forEach(r=>r.onchange=e=>{ NV.type=e.target.value; NV.p = NV.type==='gnp' ? 1.5/(NV.N-1) : 0.35; $('fK').hidden=NV.type!=='er'; $('fG').hidden=NV.type!=='sf'; $('fM').hidden=NV.type!=='sf'; scheduleBuild(); });
+$('vG').onchange=e=>{ NV.gamma=+e.target.value; scheduleBuild(); };
+$('vM').onchange=e=>{ NV.kmin=+e.target.value; scheduleBuild(); };
+$('vN').onchange=e=>{ NV.N=+e.target.value; scheduleBuild(); };
+$('vK').onchange=e=>{ NV.k=+e.target.value; scheduleBuild(); };
+$('logP').onchange=e=>{ NV.logp=e.target.checked; placePcMark(); updateView(); };
+$('showRem').onchange=e=>{ NV.showRem=e.target.checked; renderNet(); };
+$('outbreak').onclick=startOutbreak;
+$('run').onclick=()=>{ if (running){ running=false; $('run').textContent='계속'; status(); } else start(); };
+$('more').onclick=()=>{ tMul*=2; start(); };
+$('restart').onclick=()=>{ erGen++; erS.forEach(s=>{ s.cnt=0; s.S.fill(0); s.chi.fill(0); s.smax1=0; s.logSmax1=0; s.hist.fill(0); }); tMul=1; makeBond(); job=null; refresh(); start(); };
+$('sRun').onclick=()=>{ SFG=+$('sG').value; SFM=+$('sM').value; makeBond(); if (job && jobSt.kind==='bond') job=null; refresh(); start(); };
+let rz=0;
+const ro=new ResizeObserver(()=>{ if (rz) return; rz=requestAnimationFrame(()=>{ rz=0; renderNet(); drawCurve(); drawAll(); }); });
+document.querySelectorAll('figure, .plate').forEach(el=>ro.observe(el));
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{ readColors(); buildPal(); renderNet(); drawCurve(); drawAll(); });
+new MutationObserver(()=>{ readColors(); buildPal(); renderNet(); drawCurve(); drawAll(); }).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+
+readColors(); buildPal(); makeBond();
+buildView(); refresh();
+setTimeout(start,400);
+})();
+</script>
+<script>
+(() => {
+  // light/dark switch; the choice is remembered across all of the course demos
+  const btn = document.getElementById("themeBtn"), root = document.documentElement, mq = matchMedia("(prefers-color-scheme: dark)");
+  const SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>';
+  const MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>';
+  const current = () => root.dataset.theme || (mq.matches ? "dark" : "light");
+  const sync = () => { const dark = current() === "dark", label = dark ? "밝은 화면으로 전환" : "어두운 화면으로 전환";
+    btn.innerHTML = dark ? SUN : MOON; btn.setAttribute("aria-label", label); btn.title = label; };
+  btn.addEventListener("click", () => { const next = current() === "dark" ? "light" : "dark"; root.dataset.theme = next;
+    try { localStorage.setItem("netsci-theme", next); } catch (e) {} sync(); });
+  mq.addEventListener("change", sync);
+  sync();
+})();
+</script>
+</body>
+</html>
